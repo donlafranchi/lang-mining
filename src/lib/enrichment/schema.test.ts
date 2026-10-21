@@ -68,7 +68,7 @@ describe("enrichmentSchema", () => {
   });
 
   it("rejects a vocab entry missing its lemma", () => {
-    const bad = structuredClone(valid) as Record<string, any>;
+    const bad = structuredClone(valid) as unknown as { vocab: Record<string, unknown>[] };
     delete bad.vocab[0].lemma;
     expect(enrichmentSchema.safeParse(bad).success).toBe(false);
   });
