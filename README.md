@@ -12,6 +12,28 @@ Personal use only. Not for resale or distribution.
 4. The full source text is discarded after a retention window; only the mined language facts are kept
 5. You study the session on your phone (mobile-first PWA)
 
+## Setup
+
+1. Create a Supabase project and run `supabase/migrations/0001_init.sql` in its SQL editor
+2. Copy `.env.example` to `.env.local` and fill in every value
+3. Install and run:
+
+```bash
+npm install
+```
+
+```bash
+npm run dev
+```
+
+Run the tests:
+
+```bash
+npm test
+```
+
+On Vercel, set the same variables from `.env.example` as project environment variables. The daily retention job is configured in `vercel.json` and needs `CRON_SECRET`.
+
 ## Docs
 
 - [Spec](docs/spec.md)
