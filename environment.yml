@@ -1,0 +1,12 @@
+name: lang-mining
+channels: [conda-forge]
+dependencies:
+  - python=3.11
+  - ffmpeg
+  - llvmlite
+  - numba
+  - numpy<2
+  - pip
+  - pip:
+      - openai-whisper
+      - yt-dlp
