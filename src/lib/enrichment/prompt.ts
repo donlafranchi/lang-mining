@@ -35,11 +35,11 @@ function buildFarsiPrompt(): string {
 
 Return ONLY JSON, no prose before or after, no markdown fence. The JSON must have exactly these keys:
 - summary: 2 to 3 sentence gist in English
-- segments: up to 12 notable sentences, each { persian, transliteration, english }
-- vocab: the most useful 15 to 30 words, each { lemma (Persian script), transliteration, part_of_speech, english, example_fragment (Persian script), level (A1, A2, B1, B2, C1 or C2), register (formal, neutral or colloquial) }
-- idioms: every idiom or fixed expression, each { phrase (Persian script), transliteration, literal_meaning, actual_meaning, register (formal, neutral or colloquial) }
-- verbs: up to 12 notable conjugated verbs, each { infinitive (Persian script), transliteration, english (the plain English meaning of the infinitive, for example "to see"), form_in_source, form_transliteration, form_english (what the form means as used in the source), tense, mood, person, conjugation_table (object mapping pronoun to form for that tense, in Persian script), irregular (boolean), compound }
-- grammar_notes: up to 5 short notes on notable constructions, such as the ezafe or attached pronouns
+- segments: up to 6 notable sentences, each { persian, transliteration, english }
+- vocab: the most useful 10 to 15 words, each { lemma (Persian script), transliteration, part_of_speech, english, example_fragment (Persian script), level (A1, A2, B1, B2, C1 or C2), register (formal, neutral or colloquial) }
+- idioms: up to 5 idioms or fixed expressions, each { phrase (Persian script), transliteration, literal_meaning, actual_meaning, register (formal, neutral or colloquial) }
+- verbs: up to 6 notable conjugated verbs, each { infinitive (Persian script), transliteration, english (the plain English meaning of the infinitive, for example "to see"), form_in_source, form_transliteration, form_english (what the form means as used in the source), tense, mood, person, conjugation_table (object mapping pronoun to form for that tense, in Persian script), irregular (boolean), compound }
+- grammar_notes: up to 3 short notes on notable constructions, such as the ezafe or attached pronouns
 - quiz: []
 
 Rules:

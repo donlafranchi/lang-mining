@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { CompleteFn } from "./enrichment/enrich";
+import { OutputTruncatedError, type CompleteFn } from "./enrichment/enrich";
 import type { ModelId } from "./models";
 
 export function createAnthropicComplete(model: ModelId): CompleteFn {
@@ -14,6 +14,8 @@ export function createAnthropicComplete(model: ModelId): CompleteFn {
       system,
       messages,
     });
+    // A cut-off answer is incomplete JSON. Say so instead of letting it fail as "not valid JSON".
+    if (response.stop_reason === "max_tokens") throw new OutputTruncatedError();
     return response.content
       .map((block) => (block.type === "text" ? block.text : ""))
       .join("");
