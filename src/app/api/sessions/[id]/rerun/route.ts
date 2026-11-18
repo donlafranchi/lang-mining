@@ -15,8 +15,8 @@ export async function POST(request: Request, ctx: RouteContext<"/api/sessions/[i
   const model = resolveModel(body.model);
 
   try {
-    const text = await startRerun(id);
-    after(() => finishRerun({ id, text, model }));
+    const { text, language } = await startRerun(id);
+    after(() => finishRerun({ id, text, language, model }));
     return NextResponse.json({ ok: true });
   } catch (err) {
     if (err instanceof UserFacingError) {

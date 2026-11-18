@@ -2,10 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import type { Lesson } from "@/lib/enrichment/enrich";
+import type { FarsiEnrichment } from "@/lib/enrichment/farsi-schema";
 import type { Enrichment, ReflexiveKind } from "@/lib/enrichment/schema";
 import type { SessionRow } from "@/lib/sessions";
 import { DEFAULT_MODEL, modelLabel, type ModelId } from "@/lib/models";
 import { STALE_AFTER_MS } from "@/lib/status";
+import { FarsiLesson } from "./FarsiLesson";
 import { ModelSelect } from "./ModelSelect";
 
 type Tab = "read" | "vocab" | "idioms" | "verbs";
@@ -18,7 +21,7 @@ const TABS: { id: Tab; label: string }[] = [
 
 export function SessionView(props: {
   session: SessionRow;
-  enrichment: Enrichment | null;
+  enrichment: Lesson | null;
   model: string | null;
   sourceAvailable: boolean;
 }) {
@@ -115,10 +118,16 @@ export function SessionView(props: {
               </button>
             ))}
           </div>
-          {tab === "read" && <ReadTab e={enrichment} />}
-          {tab === "vocab" && <VocabTab e={enrichment} />}
-          {tab === "idioms" && <IdiomsTab e={enrichment} />}
-          {tab === "verbs" && <VerbsTab e={enrichment} />}
+          {props.session.language === "fa" ? (
+            <FarsiLesson e={enrichment as FarsiEnrichment} tab={tab} />
+          ) : (
+            <>
+              {tab === "read" && <ReadTab e={enrichment as Enrichment} />}
+              {tab === "vocab" && <VocabTab e={enrichment as Enrichment} />}
+              {tab === "idioms" && <IdiomsTab e={enrichment as Enrichment} />}
+              {tab === "verbs" && <VerbsTab e={enrichment as Enrichment} />}
+            </>
+          )}
         </>
       )}
     </div>

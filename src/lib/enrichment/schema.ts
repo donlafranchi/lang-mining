@@ -93,8 +93,8 @@ export const enrichmentSchema = z.object({
 
 export type Enrichment = z.infer<typeof enrichmentSchema>;
 
-export type ParseResult =
-  | { ok: true; data: Enrichment }
+export type ParseResult<T = Enrichment> =
+  | { ok: true; data: T }
   | { ok: false; error: string };
 
 function stripFence(text: string): string {
@@ -103,15 +103,15 @@ function stripFence(text: string): string {
   return match ? match[1] : trimmed;
 }
 
-/** Parse and validate raw model output. Never throws. */
-export function parseEnrichment(raw: string): ParseResult {
+/** Parse and validate raw model output against any schema. Never throws. */
+export function parseWith<T>(schema: z.ZodType<T>, raw: string): ParseResult<T> {
   let json: unknown;
   try {
     json = JSON.parse(stripFence(raw));
   } catch {
     return { ok: false, error: "Output was not valid JSON." };
   }
-  const result = enrichmentSchema.safeParse(json);
+  const result = schema.safeParse(json);
   if (!result.success) {
     const issues = result.error.issues
       .slice(0, 8)
@@ -120,4 +120,9 @@ export function parseEnrichment(raw: string): ParseResult {
     return { ok: false, error: `Schema validation failed: ${issues}` };
   }
   return { ok: true, data: result.data };
+}
+
+/** Parse and validate a Spanish enrichment. Never throws. */
+export function parseEnrichment(raw: string): ParseResult {
+  return parseWith(enrichmentSchema, raw);
 }
