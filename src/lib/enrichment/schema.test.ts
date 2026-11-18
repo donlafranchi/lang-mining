@@ -1,67 +1,104 @@
 import { describe, expect, it } from "vitest";
-import { enrichmentSchema, parseEnrichment, REFLEXIVE_KINDS } from "./schema";
+import { enrichmentSchema, mergeBatches, parseBatch, parseEnrichment, REFLEXIVE_KINDS } from "./schema";
 
-const valid = {
-  summary: "A short chat about weekend plans.",
-  segments: [{ spanish: "Nos vemos mañana.", english: "See you tomorrow." }],
-  vocab: [
-    {
-      lemma: "mañana",
-      surface_form: "mañana",
-      part_of_speech: "noun",
-      english: "tomorrow",
-      example_fragment: "nos vemos mañana",
-      level: "A1",
-    },
-  ],
-  idioms: [
-    {
-      phrase: "estar en las nubes",
-      literal_meaning: "to be in the clouds",
-      actual_meaning: "to be daydreaming",
-      region_tags: ["general"],
-      register: "informal",
-    },
-  ],
-  verbs: [
-    {
-      infinitive: "ver",
-      english: "to see",
-      form_in_source: "vemos",
-      form_english: "we see",
-      tense: "present",
-      mood: "indicative",
-      person: "1pl",
-      conjugation_table: { yo: "veo", tú: "ves", nosotros: "vemos" },
-      irregular: true,
-      reflexive: null,
-    },
-    {
-      infinitive: "dormir",
-      english: "to sleep",
-      form_in_source: "se durmió",
-      form_english: "he fell asleep",
-      tense: "preterite",
-      mood: "indicative",
-      person: "3sg",
-      conjugation_table: { yo: "me dormí", tú: "te dormiste", él: "se durmió" },
-      irregular: true,
-      reflexive: {
-        infinitive_reflexive: "dormirse",
-        english: "to fall asleep",
-        kind: "meaning_change",
-        explanation: "Adding se changes dormir (to be asleep) into the moment of falling asleep.",
-      },
-    },
-  ],
-  grammar_notes: ["Reflexive 'nos' here means 'each other'."],
+const verb = {
+  infinitive: "ver",
+  english: "to see",
+  form_in_source: "vemos",
+  form_english: "we see",
+  tense: "present",
+  mood: "indicative",
+  person: "1pl",
+  conjugation_table: { yo: "veo", tú: "ves", nosotros: "vemos" },
+  irregular: true,
+  reflexive: null,
 };
 
-describe("enrichmentSchema", () => {
-  it("accepts a valid enrichment and defaults quiz to empty", () => {
-    const parsed = enrichmentSchema.parse(valid);
-    expect(parsed.quiz).toEqual([]);
-    expect(parsed.segments[0].start_sec).toBeNull();
+const reflexiveVerb = {
+  infinitive: "dormir",
+  english: "to sleep",
+  form_in_source: "se durmió",
+  form_english: "he fell asleep",
+  tense: "preterite",
+  mood: "indicative",
+  person: "3sg",
+  conjugation_table: { yo: "me dormí", tú: "te dormiste", él: "se durmió" },
+  irregular: true,
+  reflexive: {
+    infinitive_reflexive: "dormirse",
+    english: "to fall asleep",
+    kind: "meaning_change",
+    explanation: "Adding se changes dormir (to be asleep) into the moment of falling asleep.",
+  },
+};
+
+const vocab = {
+  lemma: "mañana",
+  surface_form: "mañana",
+  part_of_speech: "noun",
+  english: "tomorrow",
+  example_fragment: "nos vemos mañana",
+  level: "A1",
+};
+
+const idiom = {
+  phrase: "estar en las nubes",
+  literal_meaning: "to be in the clouds",
+  actual_meaning: "to be daydreaming",
+  region_tags: ["general"],
+  register: "informal",
+};
+
+const paragraphResult = (n: number) => ({
+  n,
+  english: `Translation of paragraph ${n}.`,
+  key_phrase: { spanish: "nos vemos mañana", english: "see you tomorrow" },
+  // Cloned so a test that mutates one batch cannot leak into the next.
+  verbs: structuredClone([verb, reflexiveVerb]),
+  vocab: structuredClone([vocab]),
+  idioms: structuredClone([idiom]),
+});
+
+const batch = (numbers: number[]) => ({
+  gist: `Gist of ${numbers.join(" and ")}.`,
+  paragraphs: numbers.map(paragraphResult),
+  grammar_notes: ["Reflexive 'nos' here means 'each other'."],
+});
+
+describe("parseBatch", () => {
+  it("accepts a batch that covers exactly the numbers sent, in any order", () => {
+    expect(parseBatch(JSON.stringify(batch([1, 2])), [1, 2]).ok).toBe(true);
+    expect(parseBatch(JSON.stringify(batch([2, 1])), [1, 2]).ok).toBe(true);
+  });
+
+  it("strips a markdown fence", () => {
+    expect(parseBatch("```json\n" + JSON.stringify(batch([1])) + "\n```", [1]).ok).toBe(true);
+  });
+
+  it("rejects non-JSON", () => {
+    const result = parseBatch("Lo siento, no puedo.", [1]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/json/i);
+  });
+
+  it("rejects a skipped paragraph", () => {
+    const result = parseBatch(JSON.stringify(batch([1])), [1, 2]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/expected exactly 1, 2/i);
+  });
+
+  it("rejects an invented paragraph", () => {
+    expect(parseBatch(JSON.stringify(batch([1, 2, 3])), [1, 2]).ok).toBe(false);
+  });
+
+  it("rejects a repeated paragraph", () => {
+    const result = parseBatch(JSON.stringify(batch([1, 1])), [1, 2]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/repeat/i);
+  });
+
+  it("rejects wrong numbers from a later batch", () => {
+    expect(parseBatch(JSON.stringify(batch([1, 2])), [6, 7]).ok).toBe(false);
   });
 
   it("lists the reflexive kinds", () => {
@@ -70,82 +107,110 @@ describe("enrichmentSchema", () => {
     );
   });
 
-  it("rejects an unknown CEFR level", () => {
-    const bad = structuredClone(valid);
-    bad.vocab[0].level = "Z9";
-    expect(enrichmentSchema.safeParse(bad).success).toBe(false);
+  it.each(["english", "key_phrase"] as const)("rejects a paragraph missing %s", (key) => {
+    const bad = batch([1]) as unknown as { paragraphs: Record<string, unknown>[] };
+    delete bad.paragraphs[0][key];
+    expect(parseBatch(JSON.stringify(bad), [1]).ok).toBe(false);
   });
 
-  it("rejects a vocab entry missing its lemma", () => {
-    const bad = structuredClone(valid) as unknown as { vocab: Record<string, unknown>[] };
-    delete bad.vocab[0].lemma;
-    expect(enrichmentSchema.safeParse(bad).success).toBe(false);
+  it("rejects a batch missing its gist", () => {
+    const bad = batch([1]) as unknown as Record<string, unknown>;
+    delete bad.gist;
+    expect(parseBatch(JSON.stringify(bad), [1]).ok).toBe(false);
   });
 
-  it("rejects a verb missing its English meaning", () => {
-    const bad = structuredClone(valid) as unknown as { verbs: Record<string, unknown>[] };
-    delete bad.verbs[0].english;
-    expect(enrichmentSchema.safeParse(bad).success).toBe(false);
+  it.each(["english", "form_english"] as const)("rejects a verb missing %s", (key) => {
+    const bad = batch([1]) as unknown as { paragraphs: { verbs: Record<string, unknown>[] }[] };
+    delete bad.paragraphs[0].verbs[0][key];
+    expect(parseBatch(JSON.stringify(bad), [1]).ok).toBe(false);
   });
 
-  it("rejects a verb missing the English meaning of its form", () => {
-    const bad = structuredClone(valid) as unknown as { verbs: Record<string, unknown>[] };
-    delete bad.verbs[0].form_english;
-    expect(enrichmentSchema.safeParse(bad).success).toBe(false);
+  it("requires the reflexive key on every verb, with null allowed", () => {
+    const bad = batch([1]) as unknown as { paragraphs: { verbs: Record<string, unknown>[] }[] };
+    delete bad.paragraphs[0].verbs[0].reflexive;
+    expect(parseBatch(JSON.stringify(bad), [1]).ok).toBe(false);
   });
 
-  it("requires the reflexive key, with null for non-reflexive verbs", () => {
-    const bad = structuredClone(valid) as unknown as { verbs: Record<string, unknown>[] };
-    delete bad.verbs[0].reflexive;
-    expect(enrichmentSchema.safeParse(bad).success).toBe(false);
-    expect(enrichmentSchema.safeParse(valid).success).toBe(true);
+  it("rejects an unknown reflexive kind and an empty explanation", () => {
+    const kind = batch([1]);
+    (kind.paragraphs[0].verbs[1].reflexive as { kind: string }).kind = "mystery";
+    expect(parseBatch(JSON.stringify(kind), [1]).ok).toBe(false);
+    const expl = batch([1]);
+    (expl.paragraphs[0].verbs[1].reflexive as { explanation: string }).explanation = "";
+    expect(parseBatch(JSON.stringify(expl), [1]).ok).toBe(false);
   });
 
-  it("rejects an unknown reflexive kind", () => {
-    const bad = structuredClone(valid);
-    (bad.verbs[1].reflexive as { kind: string }).kind = "mystery";
-    expect(enrichmentSchema.safeParse(bad).success).toBe(false);
+  it("rejects an unknown CEFR level and a vocab entry missing its lemma", () => {
+    const level = batch([1]);
+    level.paragraphs[0].vocab[0].level = "Z9";
+    expect(parseBatch(JSON.stringify(level), [1]).ok).toBe(false);
+    const lemma = batch([1]) as unknown as { paragraphs: { vocab: Record<string, unknown>[] }[] };
+    delete lemma.paragraphs[0].vocab[0].lemma;
+    expect(parseBatch(JSON.stringify(lemma), [1]).ok).toBe(false);
   });
 
-  it("rejects a reflexive entry with no explanation", () => {
-    const bad = structuredClone(valid);
-    (bad.verbs[1].reflexive as { explanation: string }).explanation = "";
-    expect(enrichmentSchema.safeParse(bad).success).toBe(false);
+  it("still enforces the short-fragment rule on vocab examples", () => {
+    const bad = batch([1]);
+    bad.paragraphs[0].vocab[0].example_fragment = "palabra ".repeat(40);
+    expect(parseBatch(JSON.stringify(bad), [1]).ok).toBe(false);
   });
 
-  it("enforces the short-fragment rule on example_fragment", () => {
-    const bad = structuredClone(valid);
-    bad.vocab[0].example_fragment = "palabra ".repeat(40);
-    expect(enrichmentSchema.safeParse(bad).success).toBe(false);
-  });
-
-  it("enforces the short-fragment rule on segment text", () => {
-    const bad = structuredClone(valid);
-    bad.segments[0].spanish = "frase larga ".repeat(40);
-    expect(enrichmentSchema.safeParse(bad).success).toBe(false);
+  it("allows long paragraph translations, since full paragraphs are stored", () => {
+    const long = batch([1]);
+    long.paragraphs[0].english = "A long translated paragraph. ".repeat(60);
+    expect(parseBatch(JSON.stringify(long), [1]).ok).toBe(true);
   });
 });
 
-describe("parseEnrichment", () => {
-  it("parses plain JSON", () => {
-    const result = parseEnrichment(JSON.stringify(valid));
-    expect(result.ok).toBe(true);
+describe("mergeBatches", () => {
+  const source = ["Primer párrafo del texto.", "Segundo párrafo del texto.", "Tercer párrafo del texto."];
+
+  it("attaches the source Spanish to each paragraph, in order", () => {
+    const b1 = parseBatch(JSON.stringify(batch([2, 1])), [1, 2]);
+    const b2 = parseBatch(JSON.stringify(batch([3])), [3]);
+    if (!b1.ok || !b2.ok) throw new Error("fixture invalid");
+    const lesson = mergeBatches(source, [b1.data, b2.data]);
+    expect(lesson.paragraphs.map((p) => p.spanish)).toEqual(source);
+    expect(lesson.paragraphs.map((p) => p.english)).toEqual([
+      "Translation of paragraph 1.",
+      "Translation of paragraph 2.",
+      "Translation of paragraph 3.",
+    ]);
+    expect(lesson.paragraphs[0]).not.toHaveProperty("n");
   });
 
-  it("strips a markdown code fence around the JSON", () => {
-    const result = parseEnrichment("```json\n" + JSON.stringify(valid) + "\n```");
-    expect(result.ok).toBe(true);
+  it("joins the gists into the summary and dedupes grammar notes", () => {
+    const b1 = parseBatch(JSON.stringify(batch([1, 2])), [1, 2]);
+    const b2 = parseBatch(JSON.stringify(batch([3])), [3]);
+    if (!b1.ok || !b2.ok) throw new Error("fixture invalid");
+    const lesson = mergeBatches(source, [b1.data, b2.data]);
+    expect(lesson.summary).toBe("Gist of 1 and 2. Gist of 3.");
+    expect(lesson.grammar_notes).toEqual(["Reflexive 'nos' here means 'each other'."]);
   });
 
-  it("returns a readable error for non-JSON text", () => {
-    const result = parseEnrichment("Lo siento, no puedo.");
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error).toMatch(/json/i);
+  it("caps grammar notes at six", () => {
+    const many = { ...batch([1]), grammar_notes: Array.from({ length: 10 }, (_, i) => `Note ${i}`) };
+    const parsed = parseBatch(JSON.stringify(many), [1]);
+    if (!parsed.ok) throw new Error("fixture invalid");
+    expect(mergeBatches([source[0]], [parsed.data]).grammar_notes).toHaveLength(6);
   });
 
-  it("returns the schema issues for JSON that fails validation", () => {
-    const result = parseEnrichment(JSON.stringify({ ...valid, vocab: "nope" }));
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error).toMatch(/vocab/);
+  it("throws if a paragraph has no result", () => {
+    const b1 = parseBatch(JSON.stringify(batch([1])), [1]);
+    if (!b1.ok) throw new Error("fixture invalid");
+    expect(() => mergeBatches(source, [b1.data])).toThrow(/Paragraph 2/);
+  });
+
+  it("produces a lesson the stored schema accepts", () => {
+    const b1 = parseBatch(JSON.stringify(batch([1, 2, 3])), [1, 2, 3]);
+    if (!b1.ok) throw new Error("fixture invalid");
+    const lesson = mergeBatches(source, [b1.data]);
+    expect(enrichmentSchema.safeParse(lesson).success).toBe(true);
+    expect(parseEnrichment(JSON.stringify(lesson)).ok).toBe(true);
+  });
+
+  it("rejects the old lesson shape", () => {
+    const old = { summary: "x", segments: [], vocab: [], idioms: [], verbs: [] };
+    expect(parseEnrichment(JSON.stringify(old)).ok).toBe(false);
   });
 });

@@ -10,7 +10,7 @@ Personal DIY Spanish learning tool (sentence mining). Single user. Private repo.
 - Transcription is a swappable worker with one contract: take a job, return a transcript with segment timestamps
 
 ## Hard rules
-- Source text (article, transcript, lyrics) is transient. Store only mined language facts and short fragments, never full lines or the whole source. Delete source text after the retention window (default 7 days, configurable).
+- Full source paragraphs and their English translation are stored with each lesson (decision by Don, Nov 2026, replacing the old transient-source rule). The raw source copy and its retention job still exist but are redundant and may be removed later.
 - Never store audio or video beyond the job that needs it.
 - Spanish lessons are built once per session with no dialect choice (decision by Don, Nov 2026). The sessions.dialect column stays and holds a fixed default. Dialect-specific idioms or a separate slang side may come later.
 - Data is disposable until Don says "no more database refresh": destructive migrations and `delete from sessions;` are fine on the lang-mining Supabase project only, never on another project.

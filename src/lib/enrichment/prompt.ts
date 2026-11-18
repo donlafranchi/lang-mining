@@ -2,16 +2,17 @@ import type { Language } from "../languages";
 import { MAX_FRAGMENT_CHARS } from "./schema";
 
 function buildSpanishPrompt(): string {
-  return `You are a Spanish language teacher mining a piece of source text for a personal study session. Read it as general Latin American Spanish and flag region-specific words when they appear. Second person is tú/ustedes.
+  return `You are a Spanish language teacher mining numbered paragraphs of a source text for a personal study session. Read it as general Latin American Spanish and flag region-specific words when they appear. Second person is tú/ustedes.
 
-Return ONLY JSON, no prose before or after, no markdown fence. The JSON must have exactly these keys:
-- summary: 2 to 3 sentence gist in English
-- segments: up to 12 notable sentences, each { spanish, english, start_sec: null, end_sec: null }
-- vocab: the most useful 15 to 30 words, each { lemma, surface_form, part_of_speech, english, example_fragment, level (A1, A2, B1, B2, C1 or C2) }
-- idioms: every idiom or fixed expression, each { phrase, literal_meaning, actual_meaning, region_tags (where it is used, empty array if general), register (formal, neutral, informal, slang or vulgar) }
-- verbs: up to 12 notable conjugated verbs, each { infinitive, english (the plain English meaning of the infinitive, for example "to wash"), form_in_source, form_english (what the form means as used in the source, for example "she was washing"), tense, mood, person, conjugation_table (object mapping pronoun to form for that tense), irregular (boolean), reflexive }
-- grammar_notes: up to 5 short notes on notable constructions
-- quiz: []
+The user message lists paragraphs as [1], [2] and so on. Return ONLY JSON, no prose before or after, no markdown fence. The JSON must have exactly these keys:
+- gist: one sentence in English saying what these paragraphs are about
+- paragraphs: one entry for EVERY paragraph number you were given, each exactly once, each { n (the paragraph number), english (a faithful English translation of the whole paragraph), key_phrase { spanish, english } (the single most useful phrase or construction in the paragraph, quoted exactly), verbs, vocab, idioms }
+- grammar_notes: up to 2 short notes on notable constructions across these paragraphs
+
+Per paragraph:
+- verbs: up to 3 notable conjugated verbs, each { infinitive, english (the plain English meaning of the infinitive, for example "to wash"), form_in_source, form_english (what the form means as used in the source, for example "she was washing"), tense, mood, person, conjugation_table (object mapping pronoun to form for that tense), irregular (boolean), reflexive }
+- vocab: up to 6 of the most useful words for a learner, each { lemma, surface_form, part_of_speech, english, example_fragment (the shortest span that shows the word, at most 140 characters), level (A1, A2, B1, B2, C1 or C2) }
+- idioms: up to 2 idioms or fixed expressions, each { phrase, literal_meaning, actual_meaning, region_tags (where it is used, empty array if general), register (formal, neutral, informal, slang or vulgar) }. Use an empty array when there are none.
 
 Reflexive verbs: the reflexive key is required on every verb. Use null when the verb is not used with se in the source. When it is, set it to { infinitive_reflexive (for example "lavarse"), english (what the reflexive version means, for example "to wash oneself"), kind, explanation (one or two plain sentences for an English speaker) }. kind is exactly one of:
 - reflexive: the subject does the action to itself (me lavo, I wash myself)
@@ -21,11 +22,12 @@ Reflexive verbs: the reflexive key is required on every verb. Use null when the 
 - impersonal: the passive or impersonal se (se habla español, Spanish is spoken)
 
 Rules:
-- Never copy full lines or long passages from the source. Every example_fragment, segment, and phrase must be ${MAX_FRAGMENT_CHARS} characters or fewer. Quote only the shortest span that shows the word or construction in use.
-- Mark register on idioms and say so when a word means something different in some regions.
+- Do not copy the Spanish paragraphs back. They are attached by the app, so return only the English and the mined items.
+- Skip verbs and words that are too basic to teach, but never skip a paragraph: every paragraph number gets an entry, even if its lists are empty.
 - For reflexive uses, put the reflexive pronoun in every form of the conjugation_table (me lavo, te lavas, se lava).
+- Mark register on idioms and say so when a word means something different in some regions.
 - Describe how the source is written, do not correct it.
-- If the source is not Spanish, return empty vocab, idioms, and verbs and say so in the summary.`;
+- If a paragraph is not Spanish, still return its entry with an English translation and empty lists.`;
 }
 
 function buildFarsiPrompt(): string {
@@ -55,4 +57,9 @@ export function buildSystemPrompt(language: Language = "es"): string {
 
 export function buildUserPrompt(text: string): string {
   return `Source text to mine:\n\n${text}`;
+}
+
+/** The numbered paragraphs for one Spanish batch. */
+export function buildBatchUserPrompt(batch: { n: number; text: string }[]): string {
+  return `Paragraphs to mine:\n\n${batch.map((p) => `[${p.n}] ${p.text}`).join("\n\n")}`;
 }

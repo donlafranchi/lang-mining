@@ -325,3 +325,59 @@ a.back {
   color: var(--muted);
   font-style: italic;
 }
+
+.pager-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.btn.small {
+  width: auto;
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 0.9rem;
+}
+
+.pager {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-left: 0;
+  -webkit-overflow-scrolling: touch;
+  align-items: flex-start;
+  /* Hide the scrollbar, swipe and the buttons are the controls. */
+  scrollbar-width: none;
+}
+
+.pager::-webkit-scrollbar {
+  display: none;
+}
+
+.page {
+  flex: 0 0 100%;
+  min-width: 0;
+  scroll-snap-align: start;
+  /* Small inner margin on every page so an iOS left-edge swipe does not trigger browser back. */
+  box-sizing: border-box;
+  padding: 0 6px;
+}
+
+.section-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.para-es {
+  font-size: 1.05rem;
+  line-height: 1.55;
+}
+
+.para-en {
+  color: var(--muted);
+  line-height: 1.5;
+}
