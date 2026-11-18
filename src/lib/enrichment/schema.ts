@@ -22,17 +22,10 @@ export const DIALECT_LABELS: Record<Dialect, string> = {
 
 export const LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
 
-// Hard rule from CLAUDE.md: only short fragments are stored, never full lines
-// or the whole source. These caps are what enforce it at the schema boundary.
+// Short examples (vocab example fragments, idiom phrases) stay short. Full paragraphs are stored
+// since the transient-source hard rule was dropped (Nov 2026), see docs/tickets/006.
 export const MAX_FRAGMENT_CHARS = 140;
 const fragment = z.string().min(1).max(MAX_FRAGMENT_CHARS);
-
-const segmentSchema = z.object({
-  spanish: fragment,
-  english: fragment,
-  start_sec: z.number().nullable().default(null),
-  end_sec: z.number().nullable().default(null),
-});
 
 const vocabSchema = z.object({
   lemma: z.string().min(1),
@@ -81,12 +74,42 @@ const quizSchema = z.object({
   type: z.enum(["vocab", "idiom", "verb", "listening"]),
 });
 
+export type Vocab = z.infer<typeof vocabSchema>;
+export type Idiom = z.infer<typeof idiomSchema>;
+export type Verb = z.infer<typeof verbSchema>;
+
+const keyPhraseSchema = z.object({
+  spanish: z.string().min(1).max(300),
+  english: z.string().min(1).max(300),
+});
+
+// What the model returns for one paragraph. The Spanish text is not here: code attaches the source paragraph.
+const paragraphResultSchema = z.object({
+  n: z.number().int().positive(),
+  english: z.string().min(1).max(8000),
+  key_phrase: keyPhraseSchema,
+  verbs: z.array(verbSchema).max(6),
+  vocab: z.array(vocabSchema).max(12),
+  idioms: z.array(idiomSchema).max(6),
+});
+
+export const batchResultSchema = z.object({
+  gist: z.string().min(1),
+  paragraphs: z.array(paragraphResultSchema),
+  grammar_notes: z.array(z.string()).default([]),
+});
+
+export type BatchResult = z.infer<typeof batchResultSchema>;
+
+const lessonParagraphSchema = paragraphResultSchema.omit({ n: true }).extend({
+  spanish: z.string().min(1).max(4000),
+});
+
+export type LessonParagraph = z.infer<typeof lessonParagraphSchema>;
+
 export const enrichmentSchema = z.object({
   summary: z.string().min(1),
-  segments: z.array(segmentSchema).default([]),
-  vocab: z.array(vocabSchema),
-  idioms: z.array(idiomSchema),
-  verbs: z.array(verbSchema),
+  paragraphs: z.array(lessonParagraphSchema),
   grammar_notes: z.array(z.string()).default([]),
   quiz: z.array(quizSchema).default([]),
 });
@@ -125,4 +148,50 @@ export function parseWith<T>(schema: z.ZodType<T>, raw: string): ParseResult<T> 
 /** Parse and validate a Spanish enrichment. Never throws. */
 export function parseEnrichment(raw: string): ParseResult {
   return parseWith(enrichmentSchema, raw);
+}
+
+/** Parse one batch response. It must cover exactly the paragraph numbers that were sent, each once. */
+export function parseBatch(raw: string, expected: number[]): ParseResult<BatchResult> {
+  const result = parseWith(batchResultSchema, raw);
+  if (!result.ok) return result;
+
+  const got = result.data.paragraphs.map((p) => p.n);
+  const want = [...expected].sort((a, b) => a - b);
+  const sorted = [...got].sort((a, b) => a - b);
+  const unique = new Set(got);
+  if (unique.size !== got.length) {
+    return { ok: false, error: `Paragraph numbers repeat. Return each of ${want.join(", ")} exactly once.` };
+  }
+  if (sorted.length !== want.length || sorted.some((n, i) => n !== want[i])) {
+    return { ok: false, error: `Wrong paragraphs. Expected exactly ${want.join(", ")}, got ${sorted.join(", ") || "none"}.` };
+  }
+  return result;
+}
+
+const MAX_GRAMMAR_NOTES = 6;
+
+/** Put the batches back together. The Spanish for each paragraph is the source text, never model output. */
+export function mergeBatches(paragraphs: string[], batches: BatchResult[]): Enrichment {
+  const byNumber = new Map<number, BatchResult["paragraphs"][number]>();
+  for (const batch of batches) for (const p of batch.paragraphs) byNumber.set(p.n, p);
+
+  const merged = paragraphs.map((spanish, i) => {
+    const result = byNumber.get(i + 1);
+    if (!result) throw new Error(`Paragraph ${i + 1} is missing from the model output.`);
+    const { n: _n, ...rest } = result;
+    void _n;
+    return { spanish, ...rest };
+  });
+
+  const notes: string[] = [];
+  for (const batch of batches) {
+    for (const note of batch.grammar_notes) if (!notes.includes(note)) notes.push(note);
+  }
+
+  return {
+    summary: batches.map((b) => b.gist.trim()).join(" "),
+    paragraphs: merged,
+    grammar_notes: notes.slice(0, MAX_GRAMMAR_NOTES),
+    quiz: [],
+  };
 }

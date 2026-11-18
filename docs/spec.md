@@ -29,7 +29,7 @@ Share a link, text, or clip from an iPhone. Get a mobile-first Spanish study ses
 3. Video link or media file: Mac worker claims job (status fetching, then transcribing)
 4. Worker returns transcript with segment timestamps
 5. Claude enrichment (status enriching), JSON validated against schema
-6. Status ready. Source text scheduled for deletion at the retention date
+6. Status ready. Paragraphs and their English are stored with the lesson. The raw source copy is still scheduled for deletion at the retention date (redundant, may be removed)
 7. If a media job is queued and the Mac worker heartbeat is stale, show "waiting for home machine"
 
 ## Dialect handling
@@ -40,22 +40,22 @@ Share a link, text, or clip from an iPhone. Get a mobile-first Spanish study ses
 
 ## Enrichment JSON schema
 - summary: 2 to 3 sentence gist in English
-- segments[]: spanish, english, start_sec, end_sec
-- vocab[]: lemma, surface_form, part_of_speech, english, example_fragment, level
-- idioms[]: phrase, literal_meaning, actual_meaning, region_tags[], register
-- verbs[]: infinitive, english, form_in_source, form_english, tense, mood, person, conjugation_table, irregular, reflexive (null, or infinitive_reflexive, english, kind, explanation)
+- paragraphs[]: spanish (the source paragraph, split in code), english, key_phrase {spanish, english}, verbs[], vocab[], idioms[]
+  - vocab[]: lemma, surface_form, part_of_speech, english, example_fragment, level
+  - idioms[]: phrase, literal_meaning, actual_meaning, region_tags[], register
+  - verbs[]: infinitive, english, form_in_source, form_english, tense, mood, person, conjugation_table, irregular, reflexive (null, or infinitive_reflexive, english, kind, explanation)
 - grammar_notes[]
 - quiz[]: question, answer, type (vocab, idiom, verb, listening)
 
 ## Screens
 - Home: paste or upload box, recent sessions
-- Session tabs: Read, Vocab, Idioms, Verbs, Quiz
+- Session tabs: Read (paragraph reader, swipe right for the next paragraph), Vocab, Idioms, Verbs (the last three list items from all paragraphs), Quiz
 - Tap a word: bottom sheet with lemma, meaning, conjugation, reflexive note
 - Save to deck: vocab and idioms go to a persistent review list
 
 ## Tables
 - sessions: id, source_type, source_url, dialect, status, retention_until, created_at
-- source_texts: session_id, text, delete_after (transient)
+- source_texts: session_id, text, delete_after (raw copy, redundant now that paragraphs are stored)
 - enrichments: session_id, dialect, json, model, created_at
 - deck_items: id, kind, payload, dialect_tags, next_review_at
 - worker_heartbeat: worker_id, last_seen
