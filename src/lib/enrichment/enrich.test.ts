@@ -229,6 +229,10 @@ describe("Farsi", () => {
     expect(prompt).not.toMatch(/reflexive|tú\/ustedes|Latin American/);
   });
 
+  it("tells the model compound parts is one string", () => {
+    expect(buildSystemPrompt("fa")).toMatch(/parts \(one string/);
+  });
+
   it("keeps the Farsi lists short enough to fit in one answer", () => {
     const prompt = buildSystemPrompt("fa");
     expect(prompt).toMatch(/segments: up to 6/);

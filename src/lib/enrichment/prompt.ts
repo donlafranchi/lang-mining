@@ -44,7 +44,7 @@ Return ONLY JSON, no prose before or after, no markdown fence. The JSON must hav
 
 Rules:
 - Every Persian word or sentence needs a Latin transliteration, using one consistent system with â for the long a, and an English meaning.
-- Compound verbs: the compound key is required on every verb. Use null for a simple verb. When the verb is a noun or adjective plus a light verb (for example kâr kardan, "to work"), set it to { parts (the pieces with their meanings), explanation (one or two plain sentences for an English speaker) }.
+- Compound verbs: the compound key is required on every verb. Use null for a simple verb. When the verb is a noun or adjective plus a light verb (for example kâr kardan, "to work"), set it to { parts (one string with the pieces and their meanings, for example "kâr (work) + kardan (to do)"), explanation (one or two plain sentences for an English speaker) }.
 - Register: spoken Persian differs from written. Mark colloquial words and forms as colloquial and say so when a spoken form differs from the written one.
 - Never copy full lines or long passages from the source. Every example_fragment, segment, and phrase must be ${MAX_FRAGMENT_CHARS} characters or fewer. Quote only the shortest span that shows the word or construction in use.
 - Describe how the source is written, do not correct it.

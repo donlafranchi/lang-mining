@@ -100,6 +100,26 @@ describe("parseFarsiEnrichment", () => {
     expect(parseFarsiEnrichment(JSON.stringify(bad)).ok).toBe(false);
   });
 
+  it("accepts compound parts as a list and joins them into one string", () => {
+    const listed = structuredClone(valid) as unknown as { verbs: { compound: { parts: unknown } }[] };
+    listed.verbs[1].compound.parts = ["kâr (work)", "kardan (to do)"];
+    const result = parseFarsiEnrichment(JSON.stringify(listed));
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.verbs[1].compound?.parts).toBe("kâr (work) + kardan (to do)");
+  });
+
+  it("keeps compound parts given as a string unchanged", () => {
+    const result = parseFarsiEnrichment(JSON.stringify(valid));
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.verbs[1].compound?.parts).toBe("kâr (work) + kardan (to do)");
+  });
+
+  it.each([[[]], [[""]], [["ok", ""]], [[1, 2]], [42], [null]])("rejects compound parts %j", (parts) => {
+    const bad = structuredClone(valid) as unknown as { verbs: { compound: { parts: unknown } }[] };
+    bad.verbs[1].compound.parts = parts;
+    expect(parseFarsiEnrichment(JSON.stringify(bad)).ok).toBe(false);
+  });
+
   it("rejects a compound block with no explanation", () => {
     const bad = structuredClone(valid);
     (bad.verbs[1].compound as { explanation: string }).explanation = "";
