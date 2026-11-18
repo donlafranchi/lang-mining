@@ -11,3 +11,11 @@ export function explainSaveError(message: string): string | null {
   }
   return null;
 }
+
+/** The deck needs migration 0004. Says so when its table is missing, otherwise returns null. */
+export function explainDeckError(message: string): string | null {
+  if (/deck_items/i.test(message) && /(does not exist|schema cache|could not find)/i.test(message)) {
+    return "The deck needs a one-time database update. Run supabase/migrations/0004_deck.sql in the Supabase SQL Editor, then try again.";
+  }
+  return null;
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { explainSaveError } from "./db-errors";
+import { explainDeckError, explainSaveError } from "./db-errors";
 
 describe("explainSaveError", () => {
   it("points a missing language column at migration 0002", () => {
@@ -20,5 +20,22 @@ describe("explainSaveError", () => {
 
   it("does not match unrelated mentions of language", () => {
     expect(explainSaveError("invalid input syntax for type language")).toBeNull();
+  });
+});
+
+describe("explainDeckError", () => {
+  it("points a missing deck table at migration 0004", () => {
+    expect(explainDeckError("Could not find the table 'public.deck_items' in the schema cache")).toMatch(/0004_deck\.sql/);
+    expect(explainDeckError('relation "deck_items" does not exist')).toMatch(/0004_deck\.sql/);
+  });
+
+  it("returns null for any other error", () => {
+    expect(explainDeckError("connection refused")).toBeNull();
+    expect(explainDeckError("")).toBeNull();
+    expect(explainDeckError("duplicate key value violates unique constraint")).toBeNull();
+  });
+
+  it("does not match a missing table that is not the deck", () => {
+    expect(explainDeckError('relation "other_table" does not exist')).toBeNull();
   });
 });

@@ -1,4 +1,5 @@
 import type { FarsiEnrichment } from "@/lib/enrichment/farsi-schema";
+import { SaveWordButton } from "./SaveWordButton";
 
 export type FarsiTab = "read" | "vocab" | "idioms" | "verbs";
 
@@ -14,9 +15,9 @@ function Empty({ what }: { what: string }) {
   return <p className="muted">No {what} found in this text.</p>;
 }
 
-export function FarsiLesson({ e, tab }: { e: FarsiEnrichment; tab: FarsiTab }) {
+export function FarsiLesson({ e, tab, sessionId }: { e: FarsiEnrichment; tab: FarsiTab; sessionId: string }) {
   if (tab === "read") return <ReadTab e={e} />;
-  if (tab === "vocab") return <VocabTab e={e} />;
+  if (tab === "vocab") return <VocabTab e={e} sessionId={sessionId} />;
   if (tab === "idioms") return <IdiomsTab e={e} />;
   return <VerbsTab e={e} />;
 }
@@ -46,7 +47,7 @@ function ReadTab({ e }: { e: FarsiEnrichment }) {
   );
 }
 
-function VocabTab({ e }: { e: FarsiEnrichment }) {
+function VocabTab({ e, sessionId }: { e: FarsiEnrichment; sessionId: string }) {
   if (e.vocab.length === 0) return <Empty what="vocabulary" />;
   return (
     <div className="stack">
@@ -69,6 +70,7 @@ function VocabTab({ e }: { e: FarsiEnrichment }) {
             <div>
               “<Fa>{v.example_fragment}</Fa>”
             </div>
+            <SaveWordButton word={v} language="fa" sessionId={sessionId} />
           </div>
         </details>
       ))}

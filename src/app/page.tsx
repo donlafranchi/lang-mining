@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DeleteButton } from "@/components/DeleteButton";
 import { PasteForm } from "@/components/PasteForm";
+import { deckSummary } from "@/lib/deck";
 import { listSessions, type SessionRow } from "@/lib/sessions";
 import { effectiveStatus } from "@/lib/status";
 
@@ -15,6 +16,13 @@ export default async function Home() {
     setupError = err instanceof Error ? err.message : "Could not load recent sessions.";
   }
 
+  // The deck needs migration 0004. Without it the home page still works, just without the deck links.
+  let deck: { total: number; due: number } | null = null;
+  try {
+    const [es, fa] = await Promise.all([deckSummary("es"), deckSummary("fa")]);
+    deck = { total: es.total + fa.total, due: es.due + fa.due };
+  } catch {}
+
   return (
     <main className="shell">
       <div className="brand">
@@ -22,6 +30,17 @@ export default async function Home() {
       </div>
 
       <PasteForm />
+
+      {deck && (
+        <nav className="deck-links" aria-label="Vocabulary deck">
+          <Link className="btn secondary" href="/deck">
+            Deck ({deck.total})
+          </Link>
+          <Link className="btn secondary" href="/quiz">
+            Quiz ({deck.due} due)
+          </Link>
+        </nav>
+      )}
 
       {setupError && <p className="error" style={{ marginTop: 16 }}>{setupError}</p>}
 
