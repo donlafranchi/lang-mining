@@ -102,7 +102,7 @@ export function SessionView(props: {
             )
           ) : (
             <p className="muted">
-              The source text was deleted after the retention window. Paste it again to build a new lesson.
+              The source text for this lesson is not available. Paste it again to build a new lesson.
             </p>
           )}
           {error && <p className="error">{error}</p>}

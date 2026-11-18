@@ -1,11 +1,11 @@
 import { createAnthropicComplete } from "./anthropic";
+import { explainSaveError } from "./db-errors";
 import { enrichText, type Lesson } from "./enrichment/enrich";
 import { farsiEnrichmentSchema } from "./enrichment/farsi-schema";
 import { enrichmentSchema, type Dialect } from "./enrichment/schema";
 import { fetchArticleText, looksLikeUrl } from "./ingest/extract";
 import { resolveLanguage, type Language } from "./languages";
 import type { ModelId } from "./models";
-import { deleteAfter, retentionDays } from "./retention";
 import { db } from "./supabase";
 
 export const MIN_TEXT_CHARS = 20;
@@ -100,16 +100,23 @@ export async function createSession(args: { input: string; language: Language })
     })
     .select("id")
     .single();
-  if (sessionError || !session) throw new Error(`Could not create the session: ${sessionError?.message}`);
+  if (sessionError || !session) {
+    const message = sessionError?.message ?? "no row returned";
+    const explained = explainSaveError(message);
+    if (explained) throw new UserFacingError(explained, 503);
+    throw new Error(`Could not create the session: ${message}`);
+  }
 
   const { error: sourceError } = await db()
     .from("source_texts")
-    .insert({
-      session_id: session.id,
-      text,
-      delete_after: deleteAfter(new Date(), retentionDays(process.env.RETENTION_DAYS)).toISOString(),
-    });
-  if (sourceError) throw new Error(`Could not store the source text: ${sourceError.message}`);
+    .insert({ session_id: session.id, text });
+  if (sourceError) {
+    // Do not leave a lesson with no source behind.
+    await db().from("sessions").delete().eq("id", session.id);
+    const explained = explainSaveError(sourceError.message);
+    if (explained) throw new UserFacingError(explained, 503);
+    throw new Error(`Could not store the source text: ${sourceError.message}`);
+  }
 
   return { id: session.id, text };
 }
@@ -127,7 +134,7 @@ export async function buildSession(args: { id: string; text: string; language: L
   }
 }
 
-/** Reads the stored source text and language for a re-run. Throws a 410 if the retention job already deleted the text. */
+/** Reads the stored source text and language for a re-run. Throws a 410 if the source text is missing. */
 export async function startRerun(id: string): Promise<{ text: string; language: Language }> {
   const [{ data: source, error }, { data: session }] = await Promise.all([
     db().from("source_texts").select("text").eq("session_id", id).maybeSingle(),
@@ -137,7 +144,7 @@ export async function startRerun(id: string): Promise<{ text: string; language: 
   if (!session) throw new UserFacingError("That lesson is already gone.", 404);
   if (!source) {
     throw new UserFacingError(
-      "The source text was deleted after the retention window. Paste it again to build a new lesson.",
+      "The source text for this lesson is not available. Paste it again to build a new lesson.",
       410,
     );
   }
