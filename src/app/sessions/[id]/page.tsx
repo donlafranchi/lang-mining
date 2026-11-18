@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { DeleteButton } from "@/components/DeleteButton";
 import { SessionView } from "@/components/SessionView";
+import { isUuid } from "@/lib/ids";
 import { getSession } from "@/lib/sessions";
 import { effectiveStatus } from "@/lib/status";
 
@@ -8,14 +10,17 @@ export const dynamic = "force-dynamic";
 
 export default async function SessionPage(props: PageProps<"/sessions/[id]">) {
   const { id } = await props.params;
+  if (!isUuid(id)) notFound();
   const detail = await getSession(id);
   if (!detail) notFound();
 
   return (
     <main className="shell">
+      <Link href="/" className="back">
+        ← Back
+      </Link>
       <div className="brand">
         <h1>{detail.session.title}</h1>
-        <Link href="/">New</Link>
       </div>
       <SessionView
         session={{ ...detail.session, status: effectiveStatus(detail.session) }}
@@ -23,6 +28,9 @@ export default async function SessionPage(props: PageProps<"/sessions/[id]">) {
         model={detail.model}
         sourceAvailable={detail.sourceAvailable}
       />
+      <div className="danger-zone">
+        <DeleteButton id={detail.session.id} redirectTo="/" label="Delete this lesson" />
+      </div>
     </main>
   );
 }

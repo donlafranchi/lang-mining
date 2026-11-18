@@ -21,6 +21,7 @@ Personal DIY Spanish learning tool (sentence mining). Single user. Private repo.
 - Build from the ticket in docs/tickets/. One ticket per branch, small PRs.
 - Test-first for the enrichment parser and schema validation.
 - Good enough under the deadline. Flag anything getting more polish than the timeline justifies.
+- Don is the only user of this app. Small PRs can be merged by Code without asking once tests, lint, the build and the Vercel preview are green. Anything large or risky still waits for Don.
 - Anything that needs a human decision (language choice, UI/UX) gets surfaced in the PR description, everything else just ships.
 
 ## Notes for the human

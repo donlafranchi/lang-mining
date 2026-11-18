@@ -135,6 +135,13 @@ export async function finishRerun(args: { id: string; text: string; model: Model
   }
 }
 
+/** Deletes a lesson. The source text and enrichment rows go with it (foreign keys cascade). */
+export async function deleteSession(id: string): Promise<void> {
+  const { data, error } = await db().from("sessions").delete().eq("id", id).select("id");
+  if (error) throw new Error(`Could not delete the lesson: ${error.message}`);
+  if (!data || data.length === 0) throw new UserFacingError("That lesson is already gone.", 404);
+}
+
 export async function listSessions(limit = 20): Promise<SessionRow[]> {
   const { data, error } = await db()
     .from("sessions")
