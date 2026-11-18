@@ -156,13 +156,21 @@ textarea {
   margin: 24px 0 8px;
 }
 
+.recent .row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+}
+
 .recent a {
+  flex: 1;
+  min-width: 0;
   display: flex;
   justify-content: space-between;
   gap: 12px;
   min-height: 52px;
   align-items: center;
-  border-bottom: 1px solid var(--line);
 }
 
 .recent .title {
@@ -278,4 +286,32 @@ table.conj td:first-child {
   display: flex;
   gap: 6px;
   align-items: center;
+}
+
+a.back {
+  display: inline-block;
+  min-height: 44px;
+  line-height: 44px;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.row-delete {
+  flex: none;
+  width: 44px;
+  min-height: 44px;
+  font: inherit;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.row-delete:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.danger-zone {
+  margin-top: 32px;
 }

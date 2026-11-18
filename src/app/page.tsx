@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DeleteButton } from "@/components/DeleteButton";
 import { PasteForm } from "@/components/PasteForm";
 import { listSessions, type SessionRow } from "@/lib/sessions";
 import { effectiveStatus } from "@/lib/status";
@@ -28,12 +29,15 @@ export default async function Home() {
         <section className="recent">
           <h2>Recent</h2>
           {sessions.map((s) => (
-            <Link key={s.id} href={`/sessions/${s.id}`}>
-              <span className="title">{s.title}</span>
-              {effectiveStatus(s) !== "ready" && (
-                <span className="pill">{effectiveStatus(s) === "processing" ? "building" : "failed"}</span>
-              )}
-            </Link>
+            <div key={s.id} className="row">
+              <Link href={`/sessions/${s.id}`}>
+                <span className="title">{s.title}</span>
+                {effectiveStatus(s) !== "ready" && (
+                  <span className="pill">{effectiveStatus(s) === "processing" ? "building" : "failed"}</span>
+                )}
+              </Link>
+              <DeleteButton id={s.id} />
+            </div>
           ))}
         </section>
       )}
