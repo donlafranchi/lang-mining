@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { enrichText, EnrichmentError } from "./enrich";
 import { buildSystemPrompt } from "./prompt";
+import type { FarsiEnrichment } from "./farsi-schema";
 
 const validJson = JSON.stringify({
   summary: "Weekend plans.",
@@ -74,5 +75,53 @@ describe("enrichText", () => {
       enrichText({ text: "   ", complete }),
     ).rejects.toThrow(/empty/i);
     expect(complete).not.toHaveBeenCalled();
+  });
+});
+
+describe("Farsi", () => {
+  const farsiJson = JSON.stringify({
+    summary: "Weekend plans.",
+    segments: [],
+    vocab: [
+      {
+        lemma: "فردا",
+        transliteration: "fardâ",
+        part_of_speech: "adverb",
+        english: "tomorrow",
+        example_fragment: "فردا می‌بینمت",
+        level: "A1",
+        register: "neutral",
+      },
+    ],
+    idioms: [],
+    verbs: [],
+  });
+
+  it("builds a Farsi prompt that asks for transliteration, register and compound verbs", () => {
+    const prompt = buildSystemPrompt("fa");
+    expect(prompt).toMatch(/Persian|Farsi/);
+    expect(prompt).toMatch(/transliteration/);
+    expect(prompt).toMatch(/colloquial/);
+    expect(prompt).toMatch(/compound/);
+    expect(prompt).toMatch(/never copy full lines/i);
+    expect(prompt).toMatch(/only (a )?json/i);
+    expect(prompt).not.toMatch(/reflexive|tú\/ustedes|Latin American/);
+  });
+
+  it("keeps the Spanish prompt free of Farsi fields", () => {
+    expect(buildSystemPrompt("es")).not.toMatch(/transliteration/);
+    expect(buildSystemPrompt()).toBe(buildSystemPrompt("es"));
+  });
+
+  it("parses a Farsi response for a Farsi session", async () => {
+    const complete = vi.fn().mockResolvedValue(farsiJson);
+    const result = (await enrichText({ text: "فردا می‌بینمت.", language: "fa", complete })) as FarsiEnrichment;
+    expect(result.vocab[0].transliteration).toBe("fardâ");
+  });
+
+  it("rejects a Farsi-shaped response for a Spanish session and retries once", async () => {
+    const complete = vi.fn().mockResolvedValue(farsiJson);
+    await expect(enrichText({ text: "Hola.", language: "es", complete })).rejects.toBeInstanceOf(EnrichmentError);
+    expect(complete).toHaveBeenCalledTimes(2);
   });
 });

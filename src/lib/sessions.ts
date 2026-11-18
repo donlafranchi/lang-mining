@@ -1,7 +1,9 @@
 import { createAnthropicComplete } from "./anthropic";
-import { enrichText } from "./enrichment/enrich";
-import { enrichmentSchema, type Dialect, type Enrichment } from "./enrichment/schema";
+import { enrichText, type Lesson } from "./enrichment/enrich";
+import { farsiEnrichmentSchema } from "./enrichment/farsi-schema";
+import { enrichmentSchema, type Dialect } from "./enrichment/schema";
 import { fetchArticleText, looksLikeUrl } from "./ingest/extract";
+import { resolveLanguage, type Language } from "./languages";
 import type { ModelId } from "./models";
 import { deleteAfter, retentionDays } from "./retention";
 import { db } from "./supabase";
@@ -27,10 +29,26 @@ export type SessionRow = {
   source_url: string | null;
   title: string;
   dialect: Dialect;
+  language: Language;
   status: "processing" | "ready" | "failed";
   error: string | null;
   created_at: string;
 };
+
+// Rows are read with select("*") so the app keeps working before the language column exists (migration 0002).
+function toSessionRow(raw: Record<string, unknown>): SessionRow {
+  return {
+    id: String(raw.id),
+    source_type: raw.source_type === "url" ? "url" : "text",
+    source_url: (raw.source_url as string | null) ?? null,
+    title: String(raw.title),
+    dialect: raw.dialect as Dialect,
+    language: resolveLanguage(raw.language),
+    status: raw.status as SessionRow["status"],
+    error: (raw.error as string | null) ?? null,
+    created_at: String(raw.created_at),
+  };
+}
 
 function titleFor(text: string, url: string | null): string {
   if (url) return new URL(url).hostname.replace(/^www\./, "");
@@ -38,7 +56,7 @@ function titleFor(text: string, url: string | null): string {
   return oneLine.length > 50 ? `${oneLine.slice(0, 50)}…` : oneLine;
 }
 
-async function saveEnrichment(sessionId: string, model: ModelId, data: Enrichment) {
+async function saveEnrichment(sessionId: string, model: ModelId, data: Lesson) {
   const { error } = await db()
     .from("enrichments")
     .upsert(
@@ -49,9 +67,9 @@ async function saveEnrichment(sessionId: string, model: ModelId, data: Enrichmen
 }
 
 /** Paste text or a URL. Saves the session and source text and returns at once; call buildSession in the background to make the lesson. */
-export async function createSession(args: { input: string }): Promise<{ id: string; text: string }> {
+export async function createSession(args: { input: string; language: Language }): Promise<{ id: string; text: string }> {
   const input = args.input.trim();
-  if (!input) throw new UserFacingError("Paste some Spanish text or a link first.");
+  if (!input) throw new UserFacingError("Paste some text or a link first.");
 
   const isUrl = looksLikeUrl(input);
   let text = input;
@@ -66,7 +84,7 @@ export async function createSession(args: { input: string }): Promise<{ id: stri
       throw new UserFacingError(err instanceof Error ? err.message : "Could not read that link.");
     }
   } else if (text.length < MIN_TEXT_CHARS) {
-    throw new UserFacingError("Paste at least a sentence or two of Spanish.");
+    throw new UserFacingError("Paste at least a sentence or two.");
   }
 
   const { data: session, error: sessionError } = await db()
@@ -76,6 +94,8 @@ export async function createSession(args: { input: string }): Promise<{ id: stri
       source_url: sourceUrl,
       title: titleFor(text, sourceUrl),
       dialect: LESSON_DIALECT,
+      // Left out for Spanish so it works before migration 0002 adds the column.
+      ...(args.language === "es" ? {} : { language: args.language }),
       status: "processing",
     })
     .select("id")
@@ -95,9 +115,9 @@ export async function createSession(args: { input: string }): Promise<{ id: stri
 }
 
 /** Builds the lesson for a freshly created session. Never throws: failures are recorded on the row. */
-export async function buildSession(args: { id: string; text: string; model: ModelId }): Promise<void> {
+export async function buildSession(args: { id: string; text: string; language: Language; model: ModelId }): Promise<void> {
   try {
-    const enrichment = await enrichText({ text: args.text, complete: createAnthropicComplete(args.model) });
+    const enrichment = await enrichText({ text: args.text, language: args.language, complete: createAnthropicComplete(args.model) });
     await saveEnrichment(args.id, args.model, enrichment);
     await db().from("sessions").update({ status: "ready", error: null }).eq("id", args.id);
   } catch (err) {
@@ -107,27 +127,27 @@ export async function buildSession(args: { id: string; text: string; model: Mode
   }
 }
 
-/** Reads the stored source text for a re-run. Throws a 410 if the retention job already deleted it. */
-export async function startRerun(id: string): Promise<string> {
-  const { data: source, error } = await db()
-    .from("source_texts")
-    .select("text")
-    .eq("session_id", id)
-    .maybeSingle();
+/** Reads the stored source text and language for a re-run. Throws a 410 if the retention job already deleted the text. */
+export async function startRerun(id: string): Promise<{ text: string; language: Language }> {
+  const [{ data: source, error }, { data: session }] = await Promise.all([
+    db().from("source_texts").select("text").eq("session_id", id).maybeSingle(),
+    db().from("sessions").select("*").eq("id", id).maybeSingle(),
+  ]);
   if (error) throw new Error(`Could not read the source text: ${error.message}`);
+  if (!session) throw new UserFacingError("That lesson is already gone.", 404);
   if (!source) {
     throw new UserFacingError(
       "The source text was deleted after the retention window. Paste it again to build a new lesson.",
       410,
     );
   }
-  return source.text;
+  return { text: source.text, language: toSessionRow(session).language };
 }
 
 /** Rebuilds the lesson from stored text, in the background. A failure is logged and the lesson stays as it was. */
-export async function finishRerun(args: { id: string; text: string; model: ModelId }): Promise<void> {
+export async function finishRerun(args: { id: string; text: string; language: Language; model: ModelId }): Promise<void> {
   try {
-    const enrichment = await enrichText({ text: args.text, complete: createAnthropicComplete(args.model) });
+    const enrichment = await enrichText({ text: args.text, language: args.language, complete: createAnthropicComplete(args.model) });
     await saveEnrichment(args.id, args.model, enrichment);
     await db().from("sessions").update({ status: "ready", error: null }).eq("id", args.id);
   } catch (err) {
@@ -145,16 +165,16 @@ export async function deleteSession(id: string): Promise<void> {
 export async function listSessions(limit = 20): Promise<SessionRow[]> {
   const { data, error } = await db()
     .from("sessions")
-    .select("id, source_type, source_url, title, dialect, status, error, created_at")
+    .select("*")
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw new Error(`Could not list sessions: ${error.message}`);
-  return (data ?? []) as SessionRow[];
+  return (data ?? []).map(toSessionRow);
 }
 
 export type SessionDetail = {
   session: SessionRow;
-  enrichment: Enrichment | null;
+  enrichment: Lesson | null;
   model: string | null;
   sourceAvailable: boolean;
 };
@@ -162,11 +182,12 @@ export type SessionDetail = {
 export async function getSession(id: string): Promise<SessionDetail | null> {
   const { data: session, error } = await db()
     .from("sessions")
-    .select("id, source_type, source_url, title, dialect, status, error, created_at")
+    .select("*")
     .eq("id", id)
     .maybeSingle();
   if (error) throw new Error(`Could not load the session: ${error.message}`);
   if (!session) return null;
+  const sessionRow = toSessionRow(session);
 
   const [{ data: row }, { data: source }] = await Promise.all([
     db()
@@ -179,9 +200,10 @@ export async function getSession(id: string): Promise<SessionDetail | null> {
     db().from("source_texts").select("session_id").eq("session_id", id).maybeSingle(),
   ]);
 
-  const parsed = row ? enrichmentSchema.safeParse(row.json) : null;
+  const schema = sessionRow.language === "fa" ? farsiEnrichmentSchema : enrichmentSchema;
+  const parsed = row ? schema.safeParse(row.json) : null;
   return {
-    session: session as SessionRow,
+    session: sessionRow,
     enrichment: parsed?.success ? parsed.data : null,
     model: parsed?.success ? String(row?.model) : null,
     sourceAvailable: Boolean(source),

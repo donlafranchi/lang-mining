@@ -315,3 +315,13 @@ a.back {
 .danger-zone {
   margin-top: 32px;
 }
+
+.fa {
+  font-size: 1.15em;
+  unicode-bidi: isolate;
+}
+
+.translit {
+  color: var(--muted);
+  font-style: italic;
+}

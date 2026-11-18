@@ -20,7 +20,7 @@ export default async function SessionPage(props: PageProps<"/sessions/[id]">) {
         ← Back
       </Link>
       <div className="brand">
-        <h1>{detail.session.title}</h1>
+        <h1 dir="auto">{detail.session.title}</h1>
       </div>
       <SessionView
         session={{ ...detail.session, status: effectiveStatus(detail.session) }}

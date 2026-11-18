@@ -31,7 +31,10 @@ export default async function Home() {
           {sessions.map((s) => (
             <div key={s.id} className="row">
               <Link href={`/sessions/${s.id}`}>
-                <span className="title">{s.title}</span>
+                <span className="title" dir="auto">
+                  {s.title}
+                </span>
+                {s.language === "fa" && <span className="pill">Farsi</span>}
                 {effectiveStatus(s) !== "ready" && (
                   <span className="pill">{effectiveStatus(s) === "processing" ? "building" : "failed"}</span>
                 )}
