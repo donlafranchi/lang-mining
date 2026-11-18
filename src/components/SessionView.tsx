@@ -2,11 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { DIALECT_LABELS, type Dialect, type Enrichment } from "@/lib/enrichment/schema";
+import type { Enrichment, ReflexiveKind } from "@/lib/enrichment/schema";
 import type { SessionRow } from "@/lib/sessions";
 import { DEFAULT_MODEL, modelLabel, type ModelId } from "@/lib/models";
 import { STALE_AFTER_MS } from "@/lib/status";
-import { DialectSelect } from "./DialectSelect";
 import { ModelSelect } from "./ModelSelect";
 
 type Tab = "read" | "vocab" | "idioms" | "verbs";
@@ -19,19 +18,18 @@ const TABS: { id: Tab; label: string }[] = [
 
 export function SessionView(props: {
   session: SessionRow;
-  enrichments: Partial<Record<Dialect, Enrichment>>;
-  models: Partial<Record<Dialect, string>>;
+  enrichment: Enrichment | null;
+  model: string | null;
   sourceAvailable: boolean;
 }) {
   const router = useRouter();
-  const [dialect, setDialect] = useState<Dialect>(props.session.dialect);
   const [tab, setTab] = useState<Tab>("read");
   const [model, setModel] = useState<ModelId>(DEFAULT_MODEL);
   const [busy, setBusy] = useState(false);
   const [rerunStartedAt, setRerunStartedAt] = useState<number | null>(null);
   const [error, setError] = useState("");
 
-  const enrichment = props.enrichments[dialect];
+  const enrichment = props.enrichment;
   const initialBuild = props.session.status === "processing";
   const rerunning = rerunStartedAt !== null && !enrichment;
   const waiting = !enrichment && (initialBuild || rerunning);
@@ -57,7 +55,7 @@ export function SessionView(props: {
       const res = await fetch(`/api/sessions/${props.session.id}/rerun`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ dialect, model }),
+        body: JSON.stringify({ model }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
@@ -74,8 +72,6 @@ export function SessionView(props: {
 
   return (
     <div className="stack">
-      <DialectSelect value={dialect} onChange={setDialect} />
-
       {!enrichment && (
         <div className="card stack">
           {waiting ? (
@@ -85,7 +81,7 @@ export function SessionView(props: {
           ) : props.session.status === "failed" ? (
             <p className="error">{props.session.error ?? "This lesson did not finish building."}</p>
           ) : (
-            <p className="muted">No {DIALECT_LABELS[dialect]} version of this lesson yet.</p>
+            <p className="muted">This lesson has not been built yet.</p>
           )}
           {props.sourceAvailable ? (
             !waiting && (
@@ -95,8 +91,8 @@ export function SessionView(props: {
                   {busy
                     ? "Starting…"
                     : props.session.status === "failed"
-                      ? `Try again in ${DIALECT_LABELS[dialect]}`
-                      : `Build ${DIALECT_LABELS[dialect]} version`}
+                      ? "Try again"
+                      : "Build lesson"}
                 </button>
               </>
             )
@@ -111,13 +107,7 @@ export function SessionView(props: {
 
       {enrichment && (
         <>
-          {enrichment.detected_dialect !== dialect && (
-            <p className="muted">
-              The source reads as {DIALECT_LABELS[enrichment.detected_dialect]}. Notes below are framed for{" "}
-              {DIALECT_LABELS[dialect]}.
-            </p>
-          )}
-          {props.models[dialect] && <p className="muted">Built with {modelLabel(props.models[dialect]!)}.</p>}
+          {props.model && <p className="muted">Built with {modelLabel(props.model)}.</p>}
           <div className="tabs" role="tablist">
             {TABS.map((t) => (
               <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}>
@@ -191,7 +181,6 @@ function VocabTab({ e }: { e: Enrichment }) {
               {v.surface_form} · {v.part_of_speech}
             </div>
             <div>“{v.example_fragment}”</div>
-            <Tags items={v.dialect_tags} />
           </div>
         </details>
       ))}
@@ -215,7 +204,6 @@ function IdiomsTab({ e }: { e: Enrichment }) {
               {x.actual_meaning}
             </div>
             <div className="muted">Literally: {x.literal_meaning}</div>
-            {x.similar_in_other_dialects && <div>{x.similar_in_other_dialects}</div>}
             <Tags items={x.region_tags} />
           </div>
         </details>
@@ -223,6 +211,14 @@ function IdiomsTab({ e }: { e: Enrichment }) {
     </div>
   );
 }
+
+const REFLEXIVE_LABELS: Record<ReflexiveKind, string> = {
+  reflexive: "Acts on itself",
+  meaning_change: "Meaning changes with se",
+  reciprocal: "Each other",
+  accidental: "Happens to someone",
+  impersonal: "Impersonal or passive",
+};
 
 function VerbsTab({ e }: { e: Enrichment }) {
   if (e.verbs.length === 0) return <Empty what="verbs" />;
@@ -232,11 +228,17 @@ function VerbsTab({ e }: { e: Enrichment }) {
         <details key={i} className="item">
           <summary>
             <span>
-              <span className="lead">{v.form_in_source}</span> → {v.infinitive}
+              <span className="lead">{v.form_in_source}</span> · {v.form_english}
             </span>
-            {v.irregular && <span className="pill">irregular</span>}
+            <span className="pills">
+              {v.reflexive && <span className="pill">se</span>}
+              {v.irregular && <span className="pill">irregular</span>}
+            </span>
           </summary>
           <div className="body">
+            <div>
+              <span className="lead">{v.infinitive}</span> · {v.english}
+            </div>
             <div className="muted">
               {v.tense} · {v.mood} · {v.person}
             </div>
@@ -250,7 +252,15 @@ function VerbsTab({ e }: { e: Enrichment }) {
                 ))}
               </tbody>
             </table>
-            {v.dialect_note && <div>{v.dialect_note}</div>}
+            {v.reflexive && (
+              <div className="card stack">
+                <div>
+                  <span className="lead">{v.reflexive.infinitive_reflexive}</span> · {v.reflexive.english}
+                </div>
+                <div className="muted">{REFLEXIVE_LABELS[v.reflexive.kind]}</div>
+                <div>{v.reflexive.explanation}</div>
+              </div>
+            )}
           </div>
         </details>
       ))}

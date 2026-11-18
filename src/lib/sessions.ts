@@ -1,6 +1,6 @@
 import { createAnthropicComplete } from "./anthropic";
 import { enrichText } from "./enrichment/enrich";
-import { DIALECTS, enrichmentSchema, type Dialect, type Enrichment } from "./enrichment/schema";
+import { enrichmentSchema, type Dialect, type Enrichment } from "./enrichment/schema";
 import { fetchArticleText, looksLikeUrl } from "./ingest/extract";
 import type { ModelId } from "./models";
 import { deleteAfter, retentionDays } from "./retention";
@@ -18,9 +18,8 @@ export class UserFacingError extends Error {
   }
 }
 
-export function isDialect(value: unknown): value is Dialect {
-  return typeof value === "string" && (DIALECTS as readonly string[]).includes(value);
-}
+// Spanish lessons are built once. The column stays (and is required by the database) but holds this fixed value.
+export const LESSON_DIALECT: Dialect = "neutral_latin_american";
 
 export type SessionRow = {
   id: string;
@@ -39,18 +38,18 @@ function titleFor(text: string, url: string | null): string {
   return oneLine.length > 50 ? `${oneLine.slice(0, 50)}…` : oneLine;
 }
 
-async function saveEnrichment(sessionId: string, dialect: Dialect, model: ModelId, data: Enrichment) {
+async function saveEnrichment(sessionId: string, model: ModelId, data: Enrichment) {
   const { error } = await db()
     .from("enrichments")
     .upsert(
-      { session_id: sessionId, dialect, json: data, model },
+      { session_id: sessionId, dialect: LESSON_DIALECT, json: data, model },
       { onConflict: "session_id,dialect" },
     );
   if (error) throw new Error(`Could not save the lesson: ${error.message}`);
 }
 
 /** Paste text or a URL. Saves the session and source text and returns at once; call buildSession in the background to make the lesson. */
-export async function createSession(args: { input: string; dialect: Dialect }): Promise<{ id: string; text: string }> {
+export async function createSession(args: { input: string }): Promise<{ id: string; text: string }> {
   const input = args.input.trim();
   if (!input) throw new UserFacingError("Paste some Spanish text or a link first.");
 
@@ -76,7 +75,7 @@ export async function createSession(args: { input: string; dialect: Dialect }): 
       source_type: isUrl ? "url" : "text",
       source_url: sourceUrl,
       title: titleFor(text, sourceUrl),
-      dialect: args.dialect,
+      dialect: LESSON_DIALECT,
       status: "processing",
     })
     .select("id")
@@ -96,10 +95,10 @@ export async function createSession(args: { input: string; dialect: Dialect }): 
 }
 
 /** Builds the lesson for a freshly created session. Never throws: failures are recorded on the row. */
-export async function buildSession(args: { id: string; text: string; dialect: Dialect; model: ModelId }): Promise<void> {
+export async function buildSession(args: { id: string; text: string; model: ModelId }): Promise<void> {
   try {
-    const enrichment = await enrichText({ text: args.text, dialect: args.dialect, complete: createAnthropicComplete(args.model) });
-    await saveEnrichment(args.id, args.dialect, args.model, enrichment);
+    const enrichment = await enrichText({ text: args.text, complete: createAnthropicComplete(args.model) });
+    await saveEnrichment(args.id, args.model, enrichment);
     await db().from("sessions").update({ status: "ready", error: null }).eq("id", args.id);
   } catch (err) {
     console.error("buildSession failed", err);
@@ -125,12 +124,12 @@ export async function startRerun(id: string): Promise<string> {
   return source.text;
 }
 
-/** Builds another dialect from stored text, in the background. A failure is logged and the lesson stays as it was. */
-export async function finishRerun(args: { id: string; text: string; dialect: Dialect; model: ModelId }): Promise<void> {
+/** Rebuilds the lesson from stored text, in the background. A failure is logged and the lesson stays as it was. */
+export async function finishRerun(args: { id: string; text: string; model: ModelId }): Promise<void> {
   try {
-    const enrichment = await enrichText({ text: args.text, dialect: args.dialect, complete: createAnthropicComplete(args.model) });
-    await saveEnrichment(args.id, args.dialect, args.model, enrichment);
-    await db().from("sessions").update({ dialect: args.dialect, status: "ready", error: null }).eq("id", args.id);
+    const enrichment = await enrichText({ text: args.text, complete: createAnthropicComplete(args.model) });
+    await saveEnrichment(args.id, args.model, enrichment);
+    await db().from("sessions").update({ status: "ready", error: null }).eq("id", args.id);
   } catch (err) {
     console.error("rerun failed", err);
   }
@@ -148,8 +147,8 @@ export async function listSessions(limit = 20): Promise<SessionRow[]> {
 
 export type SessionDetail = {
   session: SessionRow;
-  enrichments: Partial<Record<Dialect, Enrichment>>;
-  models: Partial<Record<Dialect, string>>;
+  enrichment: Enrichment | null;
+  model: string | null;
   sourceAvailable: boolean;
 };
 
@@ -162,19 +161,22 @@ export async function getSession(id: string): Promise<SessionDetail | null> {
   if (error) throw new Error(`Could not load the session: ${error.message}`);
   if (!session) return null;
 
-  const [{ data: rows }, { data: source }] = await Promise.all([
-    db().from("enrichments").select("dialect, json, model").eq("session_id", id),
+  const [{ data: row }, { data: source }] = await Promise.all([
+    db()
+      .from("enrichments")
+      .select("json, model")
+      .eq("session_id", id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
     db().from("source_texts").select("session_id").eq("session_id", id).maybeSingle(),
   ]);
 
-  const enrichments: Partial<Record<Dialect, Enrichment>> = {};
-  const models: Partial<Record<Dialect, string>> = {};
-  for (const row of rows ?? []) {
-    const parsed = enrichmentSchema.safeParse(row.json);
-    if (parsed.success && isDialect(row.dialect)) {
-      enrichments[row.dialect] = parsed.data;
-      models[row.dialect] = String(row.model);
-    }
-  }
-  return { session: session as SessionRow, enrichments, models, sourceAvailable: Boolean(source) };
+  const parsed = row ? enrichmentSchema.safeParse(row.json) : null;
+  return {
+    session: session as SessionRow,
+    enrichment: parsed?.success ? parsed.data : null,
+    model: parsed?.success ? String(row?.model) : null,
+    sourceAvailable: Boolean(source),
+  };
 }

@@ -4,7 +4,6 @@ import { buildSystemPrompt } from "./prompt";
 
 const validJson = JSON.stringify({
   summary: "Weekend plans.",
-  detected_dialect: "puerto_rican",
   segments: [],
   vocab: [
     {
@@ -14,7 +13,6 @@ const validJson = JSON.stringify({
       english: "cool, great",
       example_fragment: "eso está chévere",
       level: "A2",
-      dialect_tags: ["caribbean"],
     },
   ],
   idioms: [],
@@ -22,14 +20,19 @@ const validJson = JSON.stringify({
 });
 
 describe("buildSystemPrompt", () => {
-  it("names the target dialect", () => {
-    expect(buildSystemPrompt("puerto_rican")).toMatch(/Puerto Rican/);
-    expect(buildSystemPrompt("rioplatense")).toMatch(/voseo/i);
-    expect(buildSystemPrompt("castilian")).toMatch(/vosotros/i);
+  const prompt = buildSystemPrompt();
+
+  it("does not ask for dialect fields", () => {
+    expect(prompt).not.toMatch(/detected_dialect|dialect_tags|similar_in_other_dialects|dialect_note/);
+  });
+
+  it("asks for verb translations and the reflexive block", () => {
+    expect(prompt).toMatch(/form_english/);
+    expect(prompt).toMatch(/reflexive/);
+    expect(prompt).toMatch(/reflexive pronoun/i);
   });
 
   it("tells the model to keep fragments short and return JSON only", () => {
-    const prompt = buildSystemPrompt("mexican");
     expect(prompt).toMatch(/never copy full lines/i);
     expect(prompt).toMatch(/only (a )?json/i);
   });
@@ -38,7 +41,7 @@ describe("buildSystemPrompt", () => {
 describe("enrichText", () => {
   it("returns parsed data on a valid first response", async () => {
     const complete = vi.fn().mockResolvedValue(validJson);
-    const result = await enrichText({ text: "Eso está chévere.", dialect: "puerto_rican", complete });
+    const result = await enrichText({ text: "Eso está chévere.", complete });
     expect(result.vocab[0].lemma).toBe("chévere");
     expect(complete).toHaveBeenCalledTimes(1);
   });
@@ -48,7 +51,7 @@ describe("enrichText", () => {
       .fn()
       .mockResolvedValueOnce("not json at all")
       .mockResolvedValueOnce(validJson);
-    const result = await enrichText({ text: "Hola.", dialect: "mexican", complete });
+    const result = await enrichText({ text: "Hola.", complete });
     expect(result.summary).toBe("Weekend plans.");
     expect(complete).toHaveBeenCalledTimes(2);
     const secondCall = complete.mock.calls[1][0];
@@ -60,7 +63,7 @@ describe("enrichText", () => {
   it("throws EnrichmentError after the retry also fails, and never calls a third time", async () => {
     const complete = vi.fn().mockResolvedValue("still garbage");
     await expect(
-      enrichText({ text: "Hola.", dialect: "mexican", complete }),
+      enrichText({ text: "Hola.", complete }),
     ).rejects.toBeInstanceOf(EnrichmentError);
     expect(complete).toHaveBeenCalledTimes(2);
   });
@@ -68,7 +71,7 @@ describe("enrichText", () => {
   it("rejects empty input before spending an API call", async () => {
     const complete = vi.fn();
     await expect(
-      enrichText({ text: "   ", dialect: "mexican", complete }),
+      enrichText({ text: "   ", complete }),
     ).rejects.toThrow(/empty/i);
     expect(complete).not.toHaveBeenCalled();
   });

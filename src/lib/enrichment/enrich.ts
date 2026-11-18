@@ -1,5 +1,5 @@
 import { buildSystemPrompt, buildUserPrompt } from "./prompt";
-import { parseEnrichment, type Dialect, type Enrichment } from "./schema";
+import { parseEnrichment, type Enrichment } from "./schema";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -21,13 +21,12 @@ export const MAX_INPUT_CHARS = 60_000;
 
 export async function enrichText(args: {
   text: string;
-  dialect: Dialect;
   complete: CompleteFn;
 }): Promise<Enrichment> {
   const text = args.text.trim();
   if (!text) throw new EnrichmentError("Input text is empty.");
 
-  const system = buildSystemPrompt(args.dialect);
+  const system = buildSystemPrompt();
   const messages: ChatMessage[] = [
     { role: "user", content: buildUserPrompt(text.slice(0, MAX_INPUT_CHARS)) },
   ];

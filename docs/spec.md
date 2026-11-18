@@ -1,7 +1,7 @@
 # lang-mining: Spec
 
 ## Goal
-Share a link, text, or clip from an iPhone. Get a mobile-first Spanish study session mined from it: transcript view, vocabulary, idioms, verb conjugations, dialect notes, quiz. Dialect-aware (Puerto Rican first, others selectable).
+Share a link, text, or clip from an iPhone. Get a mobile-first Spanish study session mined from it: transcript view, vocabulary, idioms, verb conjugations with English and reflexive notes, quiz. One lesson per session in general Latin American Spanish. Dialect-specific idioms may come later.
 
 ## Scope
 - Personal DIY tool, single user, private repo
@@ -33,25 +33,24 @@ Share a link, text, or clip from an iPhone. Get a mobile-first Spanish study ses
 7. If a media job is queued and the Mac worker heartbeat is stale, show "waiting for home machine"
 
 ## Dialect handling
-- Dialect field on every session, default per user, override per session
-- Claude tags vocab and idioms by region and register, with a short note on how it differs elsewhere
-- Conjugation tables respect tu, voseo, vosotros, ustedes
-- Detect-and-confirm: Claude infers the likely dialect, user can change it and re-run enrichment without re-transcribing
-- Puerto Rican features (dropped final s, l/r merging, Spanglish) are described, not treated as errors
+- Decision (Nov 2026): no dialect picker. One lesson per session, read as general Latin American Spanish
+- sessions.dialect stays and holds a fixed default
+- Idioms keep region_tags to say where they are used
+- Parked for later: dialect-specific idioms, or a separate slang side with dialects
 
 ## Enrichment JSON schema
 - summary: 2 to 3 sentence gist in English
 - segments[]: spanish, english, start_sec, end_sec
-- vocab[]: lemma, surface_form, part_of_speech, english, example_fragment, level, dialect_tags[]
-- idioms[]: phrase, literal_meaning, actual_meaning, region_tags[], register, similar_in_other_dialects
-- verbs[]: infinitive, form_in_source, tense, mood, person, conjugation_table, irregular, dialect_note
+- vocab[]: lemma, surface_form, part_of_speech, english, example_fragment, level
+- idioms[]: phrase, literal_meaning, actual_meaning, region_tags[], register
+- verbs[]: infinitive, english, form_in_source, form_english, tense, mood, person, conjugation_table, irregular, reflexive (null, or infinitive_reflexive, english, kind, explanation)
 - grammar_notes[]
 - quiz[]: question, answer, type (vocab, idiom, verb, listening)
 
 ## Screens
-- Home: paste or upload box, recent sessions, dialect picker
+- Home: paste or upload box, recent sessions
 - Session tabs: Read, Vocab, Idioms, Verbs, Quiz
-- Tap a word: bottom sheet with lemma, meaning, conjugation, dialect tags
+- Tap a word: bottom sheet with lemma, meaning, conjugation, reflexive note
 - Save to deck: vocab and idioms go to a persistent review list
 
 ## Tables
@@ -62,7 +61,7 @@ Share a link, text, or clip from an iPhone. Get a mobile-first Spanish study ses
 - worker_heartbeat: worker_id, last_seen
 
 ## Phasing
-1. Text and article URL, enrichment, session UI, dialect picker (no audio)
+1. Text and article URL, enrichment, session UI (no audio)
 2. Video link via captions, then media upload, cloud transcription, timestamp replay
 3. Mac worker with local Whisper
 4. Quiz and spaced-repetition deck

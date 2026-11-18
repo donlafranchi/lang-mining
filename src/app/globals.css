@@ -273,3 +273,9 @@ table.conj td:first-child {
 .segment .en {
   color: var(--muted);
 }
+
+.pills {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
