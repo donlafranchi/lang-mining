@@ -30,8 +30,13 @@ const idiomSchema = z.object({
   register: z.enum(REGISTERS),
 });
 
+// Models sometimes return the pieces as a list. Accept either and store one string, so the lesson never fails over it.
+const partsSchema = z
+  .union([z.string().min(1), z.array(z.string().min(1)).min(1)])
+  .transform((v) => (Array.isArray(v) ? v.join(" + ") : v));
+
 const compoundSchema = z.object({
-  parts: z.string().min(1),
+  parts: partsSchema,
   explanation: z.string().min(1),
 });
 
