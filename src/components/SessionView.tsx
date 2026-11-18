@@ -120,9 +120,9 @@ export function SessionView(props: {
             ))}
           </div>
           {props.session.language === "fa" ? (
-            <FarsiLesson e={enrichment as FarsiEnrichment} tab={tab} />
+            <FarsiLesson e={enrichment as FarsiEnrichment} tab={tab} sessionId={props.session.id} />
           ) : (
-            <SpanishLesson e={enrichment as Enrichment} tab={tab} />
+            <SpanishLesson e={enrichment as Enrichment} tab={tab} sessionId={props.session.id} />
           )}
         </>
       )}

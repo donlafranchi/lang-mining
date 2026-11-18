@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { allIdioms, allVerbs, allVocab } from "@/lib/enrichment/flatten";
 import type { Enrichment, Idiom, ReflexiveKind, Verb, Vocab } from "@/lib/enrichment/schema";
+import { SaveWordButton } from "./SaveWordButton";
 
 export type SpanishTab = "read" | "vocab" | "idioms" | "verbs";
 
@@ -10,14 +11,14 @@ function Empty({ what }: { what: string }) {
   return <p className="muted">No {what} found in this text.</p>;
 }
 
-export function SpanishLesson({ e, tab }: { e: Enrichment; tab: SpanishTab }) {
-  if (tab === "read") return <Reader e={e} />;
-  if (tab === "vocab") return <VocabList items={allVocab(e)} />;
+export function SpanishLesson({ e, tab, sessionId }: { e: Enrichment; tab: SpanishTab; sessionId: string }) {
+  if (tab === "read") return <Reader e={e} sessionId={sessionId} />;
+  if (tab === "vocab") return <VocabList items={allVocab(e)} sessionId={sessionId} />;
   if (tab === "idioms") return <IdiomList items={allIdioms(e)} />;
   return <VerbList items={allVerbs(e)} />;
 }
 
-function Reader({ e }: { e: Enrichment }) {
+function Reader({ e, sessionId }: { e: Enrichment; sessionId: string }) {
   const pager = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
   const total = e.paragraphs.length;
@@ -69,7 +70,7 @@ function Reader({ e }: { e: Enrichment }) {
             {p.vocab.length > 0 && (
               <div className="stack">
                 <div className="section-label">Vocabulary</div>
-                <VocabList items={p.vocab} />
+                <VocabList items={p.vocab} sessionId={sessionId} />
               </div>
             )}
             {p.idioms.length > 0 && (
@@ -108,7 +109,7 @@ function Tags({ items }: { items: string[] }) {
   );
 }
 
-function VocabList({ items }: { items: Vocab[] }) {
+function VocabList({ items, sessionId }: { items: Vocab[]; sessionId: string }) {
   if (items.length === 0) return <Empty what="vocabulary" />;
   return (
     <div className="stack">
@@ -125,6 +126,7 @@ function VocabList({ items }: { items: Vocab[] }) {
               {v.surface_form} · {v.part_of_speech}
             </div>
             <div>“{v.example_fragment}”</div>
+            <SaveWordButton word={v} language="es" sessionId={sessionId} />
           </div>
         </details>
       ))}

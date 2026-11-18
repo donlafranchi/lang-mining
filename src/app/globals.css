@@ -381,3 +381,85 @@ a.back {
   color: var(--muted);
   line-height: 1.5;
 }
+
+.lang-tabs {
+  grid-template-columns: repeat(2, 1fr);
+  position: static;
+}
+
+.lang-tabs a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.lang-tabs a[aria-selected="true"] {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+.deck-row {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+}
+
+.quiz-card {
+  min-height: 200px;
+  justify-content: center;
+  text-align: center;
+}
+
+.quiz-word {
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.quiz-answer {
+  font-size: 1.25rem;
+}
+
+.rate-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.rate-row .btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.rate-hint {
+  font-size: 0.7rem;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.deck-links {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.deck-links .btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
