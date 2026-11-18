@@ -25,7 +25,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Everything except static assets, the unlock page and endpoint, and the cron route (which has its own secret).
-    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons/|unlock|api/unlock|api/cron).*)",
+    // Everything except static assets and the unlock page and endpoint.
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons/|unlock|api/unlock).*)",
   ],
 };

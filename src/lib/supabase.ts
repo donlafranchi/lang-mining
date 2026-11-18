@@ -1,5 +1,4 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { SourceTextStore } from "./retention";
 
 let client: SupabaseClient | null = null;
 
@@ -14,15 +13,3 @@ export function db(): SupabaseClient {
   client = createClient(url, key, { auth: { persistSession: false } });
   return client;
 }
-
-export const supabaseSourceTextStore: SourceTextStore = {
-  async deleteExpired(nowIso) {
-    const { data, error } = await db()
-      .from("source_texts")
-      .delete()
-      .lte("delete_after", nowIso)
-      .select("session_id");
-    if (error) throw new Error(`Retention delete failed: ${error.message}`);
-    return data?.length ?? 0;
-  },
-};

@@ -9,7 +9,7 @@ Personal use only. Not for resale or distribution.
 1. Share a link, paste text, or upload a clip from your phone
 2. Server gets the words (captions or article text first, transcription only when needed)
 3. Claude extracts vocab, idioms, verb forms, and dialect notes as structured JSON
-4. The full source text is discarded after a retention window; only the mined language facts are kept
+4. The paragraphs, their English and the mined language facts are stored with the lesson
 5. You study the session on your phone (mobile-first PWA)
 
 ## Setup
@@ -32,7 +32,7 @@ Run the tests:
 npm test
 ```
 
-On Vercel, set the same variables from `.env.example` as project environment variables. The daily retention job is configured in `vercel.json` and needs `CRON_SECRET`.
+On Vercel, set the same variables from `.env.example` as project environment variables.
 
 ## Docs
 

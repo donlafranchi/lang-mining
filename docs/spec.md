@@ -29,7 +29,7 @@ Share a link, text, or clip from an iPhone. Get a mobile-first Spanish study ses
 3. Video link or media file: Mac worker claims job (status fetching, then transcribing)
 4. Worker returns transcript with segment timestamps
 5. Claude enrichment (status enriching), JSON validated against schema
-6. Status ready. Paragraphs and their English are stored with the lesson. The raw source copy is still scheduled for deletion at the retention date (redundant, may be removed)
+6. Status ready. Paragraphs and their English are stored with the lesson. The raw source copy is kept too, with no retention job
 7. If a media job is queued and the Mac worker heartbeat is stale, show "waiting for home machine"
 
 ## Dialect handling
@@ -54,8 +54,8 @@ Share a link, text, or clip from an iPhone. Get a mobile-first Spanish study ses
 - Save to deck: vocab and idioms go to a persistent review list
 
 ## Tables
-- sessions: id, source_type, source_url, dialect, status, retention_until, created_at
-- source_texts: session_id, text, delete_after (raw copy, redundant now that paragraphs are stored)
+- sessions: id, source_type, source_url, dialect, language, status, created_at
+- source_texts: session_id, text, delete_after (nullable, unused since the retention job was removed)
 - enrichments: session_id, dialect, json, model, created_at
 - deck_items: id, kind, payload, dialect_tags, next_review_at
 - worker_heartbeat: worker_id, last_seen
