@@ -41,7 +41,6 @@ const vocabSchema = z.object({
   english: z.string().min(1),
   example_fragment: fragment,
   level: z.enum(LEVELS),
-  dialect_tags: z.array(z.string()).default([]),
 });
 
 const idiomSchema = z.object({
@@ -50,18 +49,30 @@ const idiomSchema = z.object({
   actual_meaning: z.string().min(1),
   region_tags: z.array(z.string()).default([]),
   register: z.string().min(1),
-  similar_in_other_dialects: z.string().default(""),
+});
+
+export const REFLEXIVE_KINDS = ["reflexive", "meaning_change", "reciprocal", "accidental", "impersonal"] as const;
+export type ReflexiveKind = (typeof REFLEXIVE_KINDS)[number];
+
+const reflexiveSchema = z.object({
+  infinitive_reflexive: z.string().min(1),
+  english: z.string().min(1),
+  kind: z.enum(REFLEXIVE_KINDS),
+  explanation: z.string().min(1),
 });
 
 const verbSchema = z.object({
   infinitive: z.string().min(1),
+  english: z.string().min(1),
   form_in_source: z.string().min(1),
+  form_english: z.string().min(1),
   tense: z.string().min(1),
   mood: z.string().min(1),
   person: z.string().min(1),
   conjugation_table: z.record(z.string(), z.string()),
   irregular: z.boolean(),
-  dialect_note: z.string().default(""),
+  // null when the verb is not used with se in the source.
+  reflexive: reflexiveSchema.nullable(),
 });
 
 const quizSchema = z.object({
@@ -72,7 +83,6 @@ const quizSchema = z.object({
 
 export const enrichmentSchema = z.object({
   summary: z.string().min(1),
-  detected_dialect: z.enum(DIALECTS),
   segments: z.array(segmentSchema).default([]),
   vocab: z.array(vocabSchema),
   idioms: z.array(idiomSchema),

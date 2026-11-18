@@ -12,7 +12,8 @@ Personal DIY Spanish learning tool (sentence mining). Single user. Private repo.
 ## Hard rules
 - Source text (article, transcript, lyrics) is transient. Store only mined language facts and short fragments, never full lines or the whole source. Delete source text after the retention window (default 7 days, configurable).
 - Never store audio or video beyond the job that needs it.
-- Dialect is a field on every session (Puerto Rican, Mexican, Caribbean general, Rioplatense, Castilian, Neutral Latin American). Default is user-level, override per session.
+- Spanish lessons are built once per session with no dialect choice (decision by Don, Nov 2026). The sessions.dialect column stays and holds a fixed default. Dialect-specific idioms or a separate slang side may come later.
+- Data is disposable until Don says "no more database refresh": destructive migrations and `delete from sessions;` are fine on the lang-mining Supabase project only, never on another project.
 - Secrets live in environment variables only. Never commit keys.
 - Downloading from YouTube or TikTok happens only on the home Mac worker, never on cloud infrastructure.
 

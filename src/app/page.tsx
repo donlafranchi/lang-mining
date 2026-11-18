@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { PasteForm } from "@/components/PasteForm";
-import { DIALECT_LABELS } from "@/lib/enrichment/schema";
 import { listSessions, type SessionRow } from "@/lib/sessions";
 import { effectiveStatus } from "@/lib/status";
 
@@ -31,7 +30,9 @@ export default async function Home() {
           {sessions.map((s) => (
             <Link key={s.id} href={`/sessions/${s.id}`}>
               <span className="title">{s.title}</span>
-              <span className="pill">{effectiveStatus(s) === "ready" ? DIALECT_LABELS[s.dialect] : effectiveStatus(s) === "processing" ? "building" : "failed"}</span>
+              {effectiveStatus(s) !== "ready" && (
+                <span className="pill">{effectiveStatus(s) === "processing" ? "building" : "failed"}</span>
+              )}
             </Link>
           ))}
         </section>

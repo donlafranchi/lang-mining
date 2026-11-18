@@ -19,8 +19,8 @@ export default async function SessionPage(props: PageProps<"/sessions/[id]">) {
       </div>
       <SessionView
         session={{ ...detail.session, status: effectiveStatus(detail.session) }}
-        enrichments={detail.enrichments}
-        models={detail.models}
+        enrichment={detail.enrichment}
+        model={detail.model}
         sourceAvailable={detail.sourceAvailable}
       />
     </main>
