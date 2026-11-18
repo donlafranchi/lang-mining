@@ -3,9 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DIALECTS, type Dialect } from "@/lib/enrichment/schema";
+import { DEFAULT_MODEL, isModel, type ModelId } from "@/lib/models";
 import { DialectSelect } from "./DialectSelect";
+import { ModelSelect } from "./ModelSelect";
 
 const DIALECT_KEY = "lm_dialect";
+const MODEL_KEY = "lm_model";
 
 function isDialect(value: string): value is Dialect {
   return (DIALECTS as readonly string[]).includes(value);
@@ -15,6 +18,7 @@ export function PasteForm() {
   const router = useRouter();
   const [input, setInput] = useState("");
   const [dialect, setDialect] = useState<Dialect>("puerto_rican");
+  const [model, setModel] = useState<ModelId>(DEFAULT_MODEL);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -25,6 +29,8 @@ export function PasteForm() {
       // Runs once after mount on purpose: reading localStorage during render would break hydration.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       if (saved && isDialect(saved)) setDialect(saved);
+      const savedModel = localStorage.getItem(MODEL_KEY);
+      if (savedModel && isModel(savedModel)) setModel(savedModel);
     } catch {}
   }, []);
 
@@ -32,6 +38,13 @@ export function PasteForm() {
     setDialect(value);
     try {
       localStorage.setItem(DIALECT_KEY, value);
+    } catch {}
+  }
+
+  function pickModel(value: ModelId) {
+    setModel(value);
+    try {
+      localStorage.setItem(MODEL_KEY, value);
     } catch {}
   }
 
@@ -43,7 +56,7 @@ export function PasteForm() {
       const res = await fetch("/api/sessions", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ input, dialect }),
+        body: JSON.stringify({ input, dialect, model }),
       });
       const data = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
       if (!res.ok || !data.id) {
@@ -72,9 +85,10 @@ export function PasteForm() {
         />
       </label>
       <DialectSelect value={dialect} onChange={pickDialect} />
+      <ModelSelect value={model} onChange={pickModel} disabled={busy} />
       {error && <p className="error">{error}</p>}
       <button className="btn" type="submit" disabled={busy || !input.trim()}>
-        {busy ? "Mining… this can take up to a minute" : "Mine it"}
+        {busy ? "Saving…" : "Mine it"}
       </button>
     </form>
   );

@@ -1,10 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DIALECT_LABELS, type Dialect, type Enrichment } from "@/lib/enrichment/schema";
 import type { SessionRow } from "@/lib/sessions";
+import { DEFAULT_MODEL, modelLabel, type ModelId } from "@/lib/models";
+import { STALE_AFTER_MS } from "@/lib/status";
 import { DialectSelect } from "./DialectSelect";
+import { ModelSelect } from "./ModelSelect";
 
 type Tab = "read" | "vocab" | "idioms" | "verbs";
 const TABS: { id: Tab; label: string }[] = [
@@ -17,15 +20,35 @@ const TABS: { id: Tab; label: string }[] = [
 export function SessionView(props: {
   session: SessionRow;
   enrichments: Partial<Record<Dialect, Enrichment>>;
+  models: Partial<Record<Dialect, string>>;
   sourceAvailable: boolean;
 }) {
   const router = useRouter();
   const [dialect, setDialect] = useState<Dialect>(props.session.dialect);
   const [tab, setTab] = useState<Tab>("read");
+  const [model, setModel] = useState<ModelId>(DEFAULT_MODEL);
   const [busy, setBusy] = useState(false);
+  const [rerunStartedAt, setRerunStartedAt] = useState<number | null>(null);
   const [error, setError] = useState("");
 
   const enrichment = props.enrichments[dialect];
+  const initialBuild = props.session.status === "processing";
+  const rerunning = rerunStartedAt !== null && !enrichment;
+  const waiting = !enrichment && (initialBuild || rerunning);
+
+  // The lesson builds in the background, so check back until it appears.
+  useEffect(() => {
+    if (!waiting) return;
+    const timer = setInterval(() => {
+      if (rerunStartedAt !== null && Date.now() - rerunStartedAt > STALE_AFTER_MS) {
+        setRerunStartedAt(null);
+        setError("That build did not finish. Try again.");
+        return;
+      }
+      router.refresh();
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [waiting, rerunStartedAt, router]);
 
   async function build() {
     setBusy(true);
@@ -34,12 +57,13 @@ export function SessionView(props: {
       const res = await fetch(`/api/sessions/${props.session.id}/rerun`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ dialect }),
+        body: JSON.stringify({ dialect, model }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
         setError(data.error ?? "Something went wrong.");
       } else {
+        setRerunStartedAt(Date.now());
         router.refresh();
       }
     } catch {
@@ -54,17 +78,28 @@ export function SessionView(props: {
 
       {!enrichment && (
         <div className="card stack">
-          {props.session.status === "failed" || props.session.status === "processing" ? (
-            <p className="error">
-              {props.session.error ?? "This lesson did not finish building."}
+          {waiting ? (
+            <p className="muted">
+              Building your lesson. You can leave this page, it will show up under Recent when it is ready.
             </p>
+          ) : props.session.status === "failed" ? (
+            <p className="error">{props.session.error ?? "This lesson did not finish building."}</p>
           ) : (
             <p className="muted">No {DIALECT_LABELS[dialect]} version of this lesson yet.</p>
           )}
           {props.sourceAvailable ? (
-            <button className="btn" onClick={build} disabled={busy}>
-              {busy ? "Building… up to a minute" : `Build ${DIALECT_LABELS[dialect]} version`}
-            </button>
+            !waiting && (
+              <>
+                <ModelSelect value={model} onChange={setModel} disabled={busy} />
+                <button className="btn" onClick={build} disabled={busy}>
+                  {busy
+                    ? "Starting…"
+                    : props.session.status === "failed"
+                      ? `Try again in ${DIALECT_LABELS[dialect]}`
+                      : `Build ${DIALECT_LABELS[dialect]} version`}
+                </button>
+              </>
+            )
           ) : (
             <p className="muted">
               The source text was deleted after the retention window. Paste it again to build a new lesson.
@@ -82,6 +117,7 @@ export function SessionView(props: {
               {DIALECT_LABELS[dialect]}.
             </p>
           )}
+          {props.models[dialect] && <p className="muted">Built with {modelLabel(props.models[dialect]!)}.</p>}
           <div className="tabs" role="tablist">
             {TABS.map((t) => (
               <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SessionView } from "@/components/SessionView";
 import { getSession } from "@/lib/sessions";
+import { effectiveStatus } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +18,9 @@ export default async function SessionPage(props: PageProps<"/sessions/[id]">) {
         <Link href="/">New</Link>
       </div>
       <SessionView
-        session={detail.session}
+        session={{ ...detail.session, status: effectiveStatus(detail.session) }}
         enrichments={detail.enrichments}
+        models={detail.models}
         sourceAvailable={detail.sourceAvailable}
       />
     </main>
