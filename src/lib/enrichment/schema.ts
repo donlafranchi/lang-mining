@@ -126,13 +126,32 @@ function stripFence(text: string): string {
   return match ? match[1] : trimmed;
 }
 
+/** The JSON object in the text, even if the model added a sentence before or after it. */
+function extractJson(text: string): string {
+  const t = stripFence(text);
+  if (t.startsWith("{")) return t;
+  const start = t.indexOf("{");
+  const end = t.lastIndexOf("}");
+  return start >= 0 && end > start ? t.slice(start, end + 1) : t;
+}
+
+/** Why the output was not JSON, with enough of it shown to diagnose without logs. */
+function describeBadOutput(raw: string): string {
+  const t = stripFence(raw).replace(/\s+/g, " ").trim();
+  const cutOff = t.includes("{") && !t.endsWith("}");
+  const head = t.slice(0, 80);
+  const tail = t.length > 200 ? t.slice(-80) : "";
+  const shown = tail ? `starts "${head}", ends "${tail}"` : `starts "${head}"`;
+  return `Output was not valid JSON${cutOff ? ". It looks cut off before the end" : ""} (${t.length} characters, ${shown}).`;
+}
+
 /** Parse and validate raw model output against any schema. Never throws. */
 export function parseWith<T>(schema: z.ZodType<T>, raw: string): ParseResult<T> {
   let json: unknown;
   try {
-    json = JSON.parse(stripFence(raw));
+    json = JSON.parse(extractJson(raw));
   } catch {
-    return { ok: false, error: "Output was not valid JSON." };
+    return { ok: false, error: describeBadOutput(raw) };
   }
   const result = schema.safeParse(json);
   if (!result.success) {

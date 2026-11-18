@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { BATCH_CONCURRENCY, enrichText, EnrichmentError, type CompleteFn } from "./enrich";
+import { BATCH_CONCURRENCY, enrichText, EnrichmentError, OutputTruncatedError, type CompleteFn } from "./enrich";
 import type { FarsiEnrichment } from "./farsi-schema";
 import { buildBatchUserPrompt, buildSystemPrompt } from "./prompt";
 import type { Enrichment } from "./schema";
@@ -162,6 +162,44 @@ describe("enrichText (Spanish)", () => {
   });
 });
 
+describe("output cut off by the token limit", () => {
+  it("retries once with a note to be shorter, then succeeds", async () => {
+    const good = fakeModel();
+    const complete = vi
+      .fn<CompleteFn>()
+      .mockRejectedValueOnce(new OutputTruncatedError())
+      .mockImplementation(good);
+    const result = (await enrichText({ text: article(2), complete })) as Enrichment;
+    expect(result.paragraphs).toHaveLength(2);
+    expect(complete).toHaveBeenCalledTimes(2);
+    const retry = complete.mock.calls[1][0];
+    const last = retry.messages[retry.messages.length - 1];
+    expect(last.role).toBe("user");
+    expect(last.content).toMatch(/cut off/i);
+    expect(last.content).toMatch(/\[1\]/);
+  });
+
+  it("gives a clear error when it is cut off twice", async () => {
+    const complete = vi.fn<CompleteFn>().mockRejectedValue(new OutputTruncatedError());
+    const error = await enrichText({ text: article(2), complete }).catch((e) => e);
+    expect(error).toBeInstanceOf(EnrichmentError);
+    expect(error.message).toMatch(/too long/i);
+    expect(complete).toHaveBeenCalledTimes(2);
+  });
+
+  it("applies to Farsi too", async () => {
+    const complete = vi.fn<CompleteFn>().mockRejectedValue(new OutputTruncatedError());
+    await expect(enrichText({ text: "فردا می‌بینمت.", language: "fa", complete })).rejects.toBeInstanceOf(EnrichmentError);
+    expect(complete).toHaveBeenCalledTimes(2);
+  });
+
+  it("puts the start of a bad answer in the final error so it can be diagnosed", async () => {
+    const complete = vi.fn<CompleteFn>().mockResolvedValue("Sure! Here is a long explanation instead of JSON");
+    const error = await enrichText({ text: article(1), complete }).catch((e) => e);
+    expect(error.message).toContain("Sure! Here is");
+  });
+});
+
 describe("Farsi", () => {
   const farsiJson = JSON.stringify({
     summary: "Weekend plans.",
@@ -189,6 +227,13 @@ describe("Farsi", () => {
     expect(prompt).toMatch(/compound/);
     expect(prompt).toMatch(/only (a )?json/i);
     expect(prompt).not.toMatch(/reflexive|tú\/ustedes|Latin American/);
+  });
+
+  it("keeps the Farsi lists short enough to fit in one answer", () => {
+    const prompt = buildSystemPrompt("fa");
+    expect(prompt).toMatch(/segments: up to 6/);
+    expect(prompt).toMatch(/vocab: the most useful 10 to 15/);
+    expect(prompt).toMatch(/verbs: up to 6/);
   });
 
   it("keeps the Spanish prompt free of Farsi fields", () => {

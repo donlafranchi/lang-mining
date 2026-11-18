@@ -81,6 +81,32 @@ describe("parseBatch", () => {
     if (!result.ok) expect(result.error).toMatch(/json/i);
   });
 
+  it("finds the JSON when the model adds a sentence before or after it", () => {
+    const json = JSON.stringify(batch([1]));
+    expect(parseBatch(`Here is the JSON you asked for:\n${json}\nHope that helps!`, [1]).ok).toBe(true);
+    expect(parseBatch(`Claro.\n\n\`\`\`json\n${json}\n\`\`\``, [1]).ok).toBe(true);
+  });
+
+  it("says when the output looks cut off, and shows how it started and ended", () => {
+    const json = JSON.stringify(batch([1]));
+    const cut = json.slice(0, Math.floor(json.length / 2));
+    const result = parseBatch(cut, [1]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/cut off/i);
+      expect(result.error).toContain(cut.slice(0, 20));
+    }
+  });
+
+  it("does not say cut off for plain prose", () => {
+    const result = parseBatch("Lo siento, no puedo ayudar con eso.", [1]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).not.toMatch(/cut off/i);
+      expect(result.error).toContain("Lo siento");
+    }
+  });
+
   it("rejects a skipped paragraph", () => {
     const result = parseBatch(JSON.stringify(batch([1])), [1, 2]);
     expect(result.ok).toBe(false);

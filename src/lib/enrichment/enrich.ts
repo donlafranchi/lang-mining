@@ -12,6 +12,14 @@ export type CompleteFn = (args: {
   messages: ChatMessage[];
 }) => Promise<string>;
 
+/** The model hit its output limit mid-answer, so the JSON is incomplete. Thrown by a CompleteFn. */
+export class OutputTruncatedError extends Error {
+  constructor() {
+    super("The model's answer was cut off at the output limit.");
+    this.name = "OutputTruncatedError";
+  }
+}
+
 export class EnrichmentError extends Error {
   constructor(message: string) {
     super(message);
@@ -27,14 +35,23 @@ export const BATCH_CONCURRENCY = 3;
 
 export type Lesson = Enrichment | FarsiEnrichment;
 
-/** One model call, validated, with a single retry that feeds the validation error back. */
+const SHORTER_NOTE =
+  "\n\nNote: a previous attempt at this was cut off because the answer was too long. Keep every list shorter and every text brief, and return complete JSON.";
+
+/** One model call, validated, with a single retry that feeds the problem back. */
 async function completeValidated<T>(args: {
   system: string;
   messages: ChatMessage[];
   complete: CompleteFn;
   parse: (raw: string) => ParseResult<T>;
 }): Promise<T> {
-  const first = await args.complete({ system: args.system, messages: args.messages });
+  let first: string;
+  try {
+    first = await args.complete({ system: args.system, messages: args.messages });
+  } catch (err) {
+    if (!(err instanceof OutputTruncatedError)) throw err;
+    return retryShorter(args);
+  }
   const firstResult = args.parse(first);
   if (firstResult.ok) return firstResult.data;
 
@@ -46,11 +63,40 @@ async function completeValidated<T>(args: {
       content: `That response failed validation: ${firstResult.error} Return the corrected JSON only.`,
     },
   ];
-  const second = await args.complete({ system: args.system, messages: retryMessages });
+  let second: string;
+  try {
+    second = await args.complete({ system: args.system, messages: retryMessages });
+  } catch (err) {
+    if (err instanceof OutputTruncatedError) throw new EnrichmentError(TOO_LONG);
+    throw err;
+  }
   const secondResult = args.parse(second);
   if (secondResult.ok) return secondResult.data;
 
   throw new EnrichmentError(`Enrichment failed after one retry. ${secondResult.error}`);
+}
+
+const TOO_LONG = "Enrichment failed: the answer was too long and was cut off twice. Try a shorter text.";
+
+/** The first answer was cut off, so there is nothing to feed back. Ask again for a shorter one. */
+async function retryShorter<T>(args: {
+  system: string;
+  messages: ChatMessage[];
+  complete: CompleteFn;
+  parse: (raw: string) => ParseResult<T>;
+}): Promise<T> {
+  const last = args.messages[args.messages.length - 1];
+  const messages: ChatMessage[] = [...args.messages.slice(0, -1), { ...last, content: last.content + SHORTER_NOTE }];
+  let raw: string;
+  try {
+    raw = await args.complete({ system: args.system, messages });
+  } catch (err) {
+    if (err instanceof OutputTruncatedError) throw new EnrichmentError(TOO_LONG);
+    throw err;
+  }
+  const result = args.parse(raw);
+  if (result.ok) return result.data;
+  throw new EnrichmentError(`Enrichment failed after one retry. ${result.error}`);
 }
 
 /** Run async jobs with at most `limit` in flight. Results keep the input order. */
