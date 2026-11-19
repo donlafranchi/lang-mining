@@ -21,13 +21,18 @@ const SPANISH_EXAMPLE_RULE: Record<HelpLevel, string> = {
   light: "the shortest span that shows the word, at most 140 characters",
 };
 
-function buildSpanishPrompt(help: HelpLevel): string {
+function buildSpanishPrompt(help: HelpLevel, withPatterns = true): string {
+  // With the analysis service the patterns are found by rules in code, so the model is not asked for them.
+  const patternKey = withPatterns ? ", patterns" : "";
+  const patternRule = withPatterns
+    ? `- patterns: every grammar pattern from the list below that the paragraph uses, each { id (exactly as listed), quote (the exact words from the paragraph, for example "ha dado") }. Use each id at most once per paragraph, give the first use, and use an empty array when none appear. Only list a pattern when the paragraph really uses it. The patterns are:\n${patternPromptLines("es")}\n\n`
+    : "";
   return `You are a Spanish language teacher mining numbered paragraphs of a source text for a personal study session. Read it as general Latin American Spanish and flag region-specific words when they appear. Second person is tú/ustedes.
 
 The user message lists paragraphs as [1], [2] and so on. Return ONLY JSON, no prose before or after, no markdown fence. The JSON must have exactly these keys:
 - gist: one sentence in English saying what these paragraphs are about
 - title: a short English title for the text, at most 8 words, no quotation marks
-- paragraphs: one entry for EVERY paragraph number you were given, each exactly once, each { n (the paragraph number), english (a faithful English translation of the whole paragraph), key_phrase { spanish, english } (the single most useful phrase or construction in the paragraph, quoted exactly), verbs, vocab, idioms, patterns }
+- paragraphs: one entry for EVERY paragraph number you were given, each exactly once, each { n (the paragraph number), english (a faithful English translation of the whole paragraph), key_phrase { spanish, english } (the single most useful phrase or construction in the paragraph, quoted exactly), verbs, vocab, idioms${patternKey} }
 - grammar_notes: up to 2 short notes on notable constructions across these paragraphs
 
 Per paragraph:
@@ -35,10 +40,7 @@ Per paragraph:
 - vocab: ${SPANISH_WORDS_RULE[help]}, each { lemma, surface_form, part_of_speech, english, example_fragment (${SPANISH_EXAMPLE_RULE[help]}), level (A1, A2, B1, B2, C1 or C2) }
 - idioms: up to 2 idioms or fixed expressions, each { phrase, literal_meaning, actual_meaning, region_tags (where it is used, empty array if general), register (formal, neutral, informal, slang or vulgar) }. Use an empty array when there are none.
 
-- patterns: every grammar pattern from the list below that the paragraph uses, each { id (exactly as listed), quote (the exact words from the paragraph, for example "ha dado") }. Use each id at most once per paragraph, give the first use, and use an empty array when none appear. Only list a pattern when the paragraph really uses it. The patterns are:
-${patternPromptLines("es")}
-
-Reflexive verbs: the reflexive key is required on every verb. Use null when the verb is not used with se in the source. When it is, set it to { infinitive_reflexive (for example "lavarse"), english (what the reflexive version means, for example "to wash oneself"), kind, explanation (one or two plain sentences for an English speaker) }. kind is exactly one of:
+${patternRule}Reflexive verbs: the reflexive key is required on every verb. Use null when the verb is not used with se in the source. When it is, set it to { infinitive_reflexive (for example "lavarse"), english (what the reflexive version means, for example "to wash oneself"), kind, explanation (one or two plain sentences for an English speaker) }. kind is exactly one of:
 - reflexive: the subject does the action to itself (me lavo, I wash myself)
 - meaning_change: se changes the verb's meaning (dormirse, to fall asleep, versus dormir, to sleep)
 - reciprocal: people do it to each other (se abrazan, they hug each other)
@@ -98,8 +100,12 @@ Rules:
 }
 
 /** The system prompt for a language. The help level sets how many words get glossed. */
-export function buildSystemPrompt(language: Language = "es", help: HelpLevel = defaultHelp(language)): string {
-  return language === "fa" ? buildFarsiPrompt(help) : buildSpanishPrompt(help);
+export function buildSystemPrompt(
+  language: Language = "es",
+  help: HelpLevel = defaultHelp(language),
+  options: { patterns?: boolean } = {},
+): string {
+  return language === "fa" ? buildFarsiPrompt(help) : buildSpanishPrompt(help, options.patterns ?? true);
 }
 
 /** The numbered paragraphs for one Spanish batch. */

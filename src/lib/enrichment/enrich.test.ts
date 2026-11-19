@@ -492,3 +492,28 @@ describe("enrichText with the analysis service", () => {
     expect(lesson.paragraphs[0].vocab.some((v) => v.lemma === "párrafo")).toBe(false);
   });
 });
+
+describe("enrichText finds Spanish grammar patterns by rules when the analysis service is up", () => {
+  it("adds the patterns from the analysis, quoted from the text, and does not ask the model for them", async () => {
+    const fx = (await import("../pattern-rules/fixtures-es.json")).default as unknown as { cases: { id: string; text: string; tokens: unknown[] }[] };
+    const c = fx.cases.find((x) => x.id === "present_perfect" && x.text.includes("dado"))!;
+    const analyzer = { analyze: async () => [{ tokens: c.tokens }] } as unknown as import("../analysis/contract").Analyzer;
+    const complete = vi.fn(fakeModel());
+    const lesson = (await enrichText({ text: c.text, help: "light", complete, analyzer, lexicon: (await import("../../test-support/memory-lexicon")).memoryStore().store })) as Enrichment;
+    expect(lesson.paragraphs[0].patterns).toEqual([{ id: "present_perfect", quote: "ha dado" }]);
+    expect(complete.mock.calls[0][0].system).not.toMatch(/The patterns are:/);
+  });
+
+  it("falls back to asking the model when the analysis service is down", async () => {
+    const down = { analyze: async () => { throw new Error("down"); } };
+    const complete = vi.fn(fakeModel());
+    await enrichText({ text: article(1), help: "light", complete, analyzer: down });
+    expect(complete.mock.calls[0][0].system).toMatch(/The patterns are:/);
+  });
+
+  it("still asks the model for patterns when there is no analysis service", async () => {
+    const complete = vi.fn(fakeModel());
+    await enrichText({ text: article(1), complete });
+    expect(complete.mock.calls[0][0].system).toMatch(/The patterns are:/);
+  });
+});
