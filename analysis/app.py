@@ -10,7 +10,7 @@ from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from analyzers import analyze
-from conjugation import conjugate
+from conjugation import conjugate, conjugate_all
 
 MAX_PARAGRAPHS = 200
 MAX_CHARS = 100_000
@@ -28,6 +28,11 @@ class VerbRequest(BaseModel):
     lemma: str = Field(min_length=1, max_length=60)
     # spaCy's grammar features for the form as written, for example "Mood=Ind Tense=Past Person=3".
     morph: str = Field(default="", max_length=200)
+
+
+class ConjugateAllRequest(BaseModel):
+    language: Literal["es"]
+    lemma: str = Field(min_length=1, max_length=60)
 
 
 class ConjugateRequest(BaseModel):
@@ -66,3 +71,12 @@ def conjugate_route(body: ConjugateRequest, x_analysis_key: str | None = Header(
             # A verb the conjugator cannot handle is left out, never an error for the whole lesson.
             results.append(None)
     return {"language": body.language, "verbs": results}
+
+
+@app.post("/conjugate-all")
+def conjugate_all_route(body: ConjugateAllRequest, x_analysis_key: str | None = Header(default=None)) -> dict:
+    check_key(x_analysis_key)
+    try:
+        return conjugate_all(body.lemma)
+    except Exception:
+        raise HTTPException(status_code=422, detail="Cannot conjugate that verb.")

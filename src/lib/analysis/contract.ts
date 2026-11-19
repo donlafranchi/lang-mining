@@ -37,6 +37,13 @@ export const conjugationSchema = z.object({
 });
 export type Conjugation = z.infer<typeof conjugationSchema>;
 
+export const allTensesSchema = z.object({
+  lemma: z.string(),
+  irregular: z.boolean(),
+  tenses: z.array(z.object({ mood: z.string(), tense: z.string(), table: z.record(z.string(), z.string()) })),
+});
+export type AllTenses = z.infer<typeof allTensesSchema>;
+
 export const conjugateResponseSchema = z.object({ verbs: z.array(conjugationSchema.nullable()) });
 
 export interface Analyzer {
@@ -44,4 +51,6 @@ export interface Analyzer {
   analyze(language: Language, paragraphs: string[]): Promise<ParagraphAnalysis[]>;
   /** Conjugation tables, one per query in order, or null for a verb it cannot do. Optional: Spanish only for now. */
   conjugate?(language: Language, verbs: VerbQuery[]): Promise<(Conjugation | null)[]>;
+  /** Every common tense of one verb, for the "more forms" view. Spanish only for now. */
+  conjugateAll?(language: Language, lemma: string): Promise<AllTenses>;
 }

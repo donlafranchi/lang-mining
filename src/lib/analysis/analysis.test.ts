@@ -48,3 +48,13 @@ describe("analyzerFromEnv", () => {
     expect(analyzerFromEnv({ ANALYSIS_URL: "https://x", ANALYSIS_KEY: "k" })).not.toBeNull();
   });
 });
+
+describe("httpAnalyzer conjugateAll", () => {
+  it("asks for every tense of one verb", async () => {
+    const body = { lemma: "dar", irregular: true, tenses: [{ mood: "indicativo", tense: "presente", table: { yo: "doy" } }] };
+    const f = vi.fn(async () => ok(body));
+    const out = await httpAnalyzer("https://svc.example", "k", f as unknown as typeof fetch).conjugateAll!("es", "dar");
+    expect(out.tenses[0].table.yo).toBe("doy");
+    expect((f.mock.calls[0] as unknown as [string])[0]).toBe("https://svc.example/conjugate-all");
+  });
+});

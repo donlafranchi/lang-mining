@@ -112,3 +112,20 @@ def test_conjugate_route_needs_the_key_and_skips_verbs_it_cannot_do():
     assert client.post("/conjugate", json=body).status_code == 401
     ok = client.post("/conjugate", json=body, headers=KEY).json()
     assert ok["verbs"][0]["table"]["yo"] == "doy"
+
+
+def test_conjugate_all_lists_the_common_tenses_with_six_persons_each():
+    from conjugation import conjugate_all
+
+    r = conjugate_all("dar")
+    keys = [(t["mood"], t["tense"]) for t in r["tenses"]]
+    assert keys[0] == ("indicativo", "presente") and ("subjuntivo", "presente") in keys
+    assert r["tenses"][0]["table"]["yo"] == "doy"
+    assert all(len(t["table"]) == (5 if t["mood"] == "imperativo" else 6) for t in r["tenses"])
+
+
+def test_conjugate_all_route_needs_the_key():
+    body = {"language": "es", "lemma": "dar"}
+    assert client.post("/conjugate-all", json=body).status_code == 401
+    ok = client.post("/conjugate-all", json=body, headers=KEY).json()
+    assert ok["lemma"] == "dar" and len(ok["tenses"]) > 5

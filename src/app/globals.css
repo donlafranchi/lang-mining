@@ -669,3 +669,44 @@ button.mark {
   line-height: 1;
   margin: 12px 0;
 }
+
+/* One layout for every word: as written, from, meaning, kind of word. */
+.word-entry {
+  display: grid;
+  gap: 2px;
+  padding: 2px 0;
+}
+.word-line {
+  line-height: 1.35;
+}
+details.word-details summary {
+  list-style: none;
+  cursor: pointer;
+}
+details.word-details summary::-webkit-details-marker {
+  display: none;
+}
+details.word-details summary::after {
+  content: "▾ conjugation";
+  font-size: 0.8rem;
+  color: var(--accent);
+}
+details.word-details[open] summary::after {
+  content: "▴ hide";
+}
+.word-body {
+  padding: 8px 0 4px;
+}
+button.pattern-row {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+button.pattern-row:last-child {
+  border-bottom: 0;
+}

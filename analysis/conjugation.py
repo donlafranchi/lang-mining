@@ -68,16 +68,50 @@ def _bare(phrase: str, pronouns: tuple[str, ...]) -> str:
     return phrase
 
 
-def conjugate(lemma: str, morph: str) -> dict:
-    data = json.loads(_conjugator().conjugate(lemma).to_json())
-    mood, tense = tense_key(morph)
-    rows = data["moods"].get(mood, {}).get(tense) or data["moods"]["indicativo"]["presente"]
+def _table(rows: list[dict]) -> dict[str, str]:
     table: dict[str, str] = {}
     for label, pronouns in PERSONS:
         for row in rows:
             if row.get("pr") in pronouns and row.get("c"):
                 table[label] = _bare(row["c"][0], pronouns)
                 break
+    return table
+
+
+# The order a learner meets them in. Anything verbecc adds beyond these is left out.
+ALL_TENSES = [
+    ("indicativo", "presente"),
+    ("indicativo", "pretérito-perfecto-simple"),
+    ("indicativo", "pretérito-imperfecto"),
+    ("indicativo", "futuro"),
+    ("condicional", "presente"),
+    ("subjuntivo", "presente"),
+    ("subjuntivo", "pretérito-imperfecto-1"),
+    ("imperativo", "afirmativo"),
+    ("indicativo", "pretérito-perfecto-compuesto"),
+    ("indicativo", "pretérito-pluscuamperfecto"),
+    ("indicativo", "futuro-perfecto"),
+    ("condicional", "perfecto"),
+    ("subjuntivo", "pretérito-perfecto"),
+]
+
+
+def conjugate_all(lemma: str) -> dict:
+    """Every common tense of a verb, for the 'more forms' view."""
+    data = json.loads(_conjugator().conjugate(lemma).to_json())
+    tenses = []
+    for mood, tense in ALL_TENSES:
+        rows = data["moods"].get(mood, {}).get(tense)
+        if rows:
+            tenses.append({"mood": mood, "tense": tense, "table": _table(rows)})
+    return {"lemma": lemma, "irregular": data["verb"].get("template") not in REGULAR_TEMPLATES, "tenses": tenses}
+
+
+def conjugate(lemma: str, morph: str) -> dict:
+    data = json.loads(_conjugator().conjugate(lemma).to_json())
+    mood, tense = tense_key(morph)
+    rows = data["moods"].get(mood, {}).get(tense) or data["moods"]["indicativo"]["presente"]
+    table = _table(rows)
     verb = data["verb"]
     return {
         "lemma": lemma,

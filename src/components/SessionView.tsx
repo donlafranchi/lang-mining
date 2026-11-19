@@ -125,7 +125,7 @@ export function SessionView(props: {
         <>
           {props.model && <p className="muted">Built with {modelLabel(props.model)}.</p>}
           <div className="tabs" role="tablist">
-            {TABS.map((t) => (
+            {TABS.filter((t) => !(props.session.language !== "fa" && t.id === "verbs")).map((t) => (
               <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}>
                 {t.label}
               </button>
