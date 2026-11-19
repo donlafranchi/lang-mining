@@ -96,6 +96,32 @@ ALL_TENSES = [
 ]
 
 
+# Progressive tenses are estar in a tense plus the -ing form (gerund): estoy teniendo, estaba teniendo.
+PROGRESSIVES = [
+    ("presente", ("indicativo", "presente")),
+    ("pretérito-imperfecto", ("indicativo", "pretérito-imperfecto")),
+    ("pretérito-perfecto-simple", ("indicativo", "pretérito-perfecto-simple")),
+    ("futuro", ("indicativo", "futuro")),
+    ("condicional", ("condicional", "presente")),
+    ("pretérito-perfecto-compuesto", ("indicativo", "pretérito-perfecto-compuesto")),
+]
+
+
+def _progressives(lemma: str, data: dict) -> list[dict]:
+    gerund = (data["moods"].get("gerundio", {}).get("gerundio") or [{}])[0].get("c", [None])[0]
+    if not gerund or lemma.endswith("se") or lemma == "estar":
+        return []
+    estar = json.loads(_conjugator().conjugate("estar").to_json())
+    out = []
+    for key, (mood, tense) in PROGRESSIVES:
+        rows = estar["moods"].get(mood, {}).get(tense)
+        if not rows:
+            continue
+        table = {label: f"{form} {gerund}" for label, form in _table(rows).items()}
+        out.append({"mood": "progresivo", "tense": key, "table": table})
+    return out
+
+
 def conjugate_all(lemma: str) -> dict:
     """Every common tense of a verb, for the 'more forms' view."""
     data = json.loads(_conjugator().conjugate(lemma).to_json())
@@ -104,6 +130,7 @@ def conjugate_all(lemma: str) -> dict:
         rows = data["moods"].get(mood, {}).get(tense)
         if rows:
             tenses.append({"mood": mood, "tense": tense, "table": _table(rows)})
+    tenses += _progressives(lemma, data)
     return {"lemma": lemma, "irregular": data["verb"].get("template") not in REGULAR_TEMPLATES, "tenses": tenses}
 
 

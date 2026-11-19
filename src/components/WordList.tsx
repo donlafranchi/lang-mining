@@ -8,6 +8,7 @@ import type { ReflexiveKind, Verb } from "@/lib/enrichment/schema";
 import type { Language } from "@/lib/languages";
 import { posLabel } from "@/lib/pos-labels";
 import { tenseLabel } from "@/lib/tense-labels";
+import { verbTags } from "@/lib/verb-meta";
 import { SaveAllButton } from "./SaveAllButton";
 import { SaveWordButton } from "./SaveWordButton";
 
@@ -26,19 +27,27 @@ function savable(row: WordRow) {
   return { lemma: v.infinitive, english: v.english, part_of_speech: "verb", example_fragment: v.form_in_source };
 }
 
-/** The same four lines for every word: as written, from, meaning, kind of word. */
-function Entry(props: { written: string; lemma: string; english: string; senses?: string[]; pos: string }) {
+/**
+ * The same layout for every word. Line 1: the form as written, with its kind of word at the right edge. Line 2: the
+ * dictionary form and its meaning. Line 3 (when there is any): short tags such as "gerund (-ing)" or "irregular".
+ */
+function Entry(props: { written: string; lemma: string; english: string; senses?: string[]; pos: string; tags?: string[] }) {
   const meanings = props.senses && props.senses.length > 1 ? props.senses.slice(0, 4).join(", ") : props.english;
+  const same = props.written.toLowerCase() === props.lemma.toLowerCase();
   return (
     <div className="word-entry">
-      <div className="lead">{props.written}</div>
-      {props.written.toLowerCase() !== props.lemma.toLowerCase() && (
-        <div className="word-line">
-          <span className="muted">from:</span> {props.lemma}
-        </div>
-      )}
-      <div className="word-line">{meanings}</div>
-      <div className="word-line muted">{posLabel(props.pos)}</div>
+      <div className="word-top">
+        <span className="lead">{props.written}</span>
+        <span className="word-pos">{posLabel(props.pos)}</span>
+      </div>
+      <div className="word-line">
+        {same ? meanings : (
+          <>
+            {props.lemma} <span className="muted">({meanings})</span>
+          </>
+        )}
+      </div>
+      {props.tags && props.tags.length > 0 && <div className="word-line muted">{props.tags.join(" · ")}</div>}
     </div>
   );
 }
@@ -105,10 +114,6 @@ function MoreForms({ lemma }: { lemma: string }) {
 function VerbBody({ verb }: { verb: Verb }) {
   return (
     <div className="stack word-body">
-      <div className="muted">
-        {verb.tense} · {verb.mood} · {verb.person}
-        {verb.irregular ? " · irregular" : ""}
-      </div>
       <Table table={verb.conjugation_table} />
       {verb.reflexive && (
         <div className="card stack">
@@ -142,7 +147,7 @@ export function WordList(props: { rows: WordRow[]; sessionId: string; language?:
               ) : (
                 <details className="word-details">
                   <summary>
-                    <Entry written={row.verb.form_in_source} lemma={row.verb.infinitive} english={row.verb.english} senses={row.senses} pos="verb" />
+                    <Entry written={row.verb.form_in_source} lemma={row.verb.infinitive} english={row.verb.english} senses={row.senses} pos="verb" tags={verbTags(row.verb)} />
                   </summary>
                   <VerbBody verb={row.verb} />
                 </details>

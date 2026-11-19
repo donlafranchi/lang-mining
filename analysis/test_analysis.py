@@ -129,3 +129,19 @@ def test_conjugate_all_route_needs_the_key():
     assert client.post("/conjugate-all", json=body).status_code == 401
     ok = client.post("/conjugate-all", json=body, headers=KEY).json()
     assert ok["lemma"] == "dar" and len(ok["tenses"]) > 5
+
+
+def test_conjugate_all_adds_progressive_tenses_made_from_estar_and_the_gerund():
+    from conjugation import conjugate_all
+
+    tenses = {(t["mood"], t["tense"]): t["table"] for t in conjugate_all("tener")["tenses"]}
+    assert tenses[("progresivo", "presente")]["yo"] == "estoy teniendo"
+    assert tenses[("progresivo", "pretérito-imperfecto")]["nosotros"] == "estábamos teniendo"
+    assert tenses[("progresivo", "pretérito-perfecto-compuesto")]["yo"] == "he estado teniendo"
+
+
+def test_reflexive_verbs_and_estar_get_no_progressive_tenses():
+    from conjugation import conjugate_all
+
+    for lemma in ("lavarse", "estar"):
+        assert not [t for t in conjugate_all(lemma)["tenses"] if t["mood"] == "progresivo"]

@@ -12,6 +12,12 @@ const LABELS: Record<string, string> = {
   "indicativo/futuro-perfecto": "Future perfect (will have done)",
   "condicional/perfecto": "Conditional perfect (would have done)",
   "subjuntivo/pretérito-perfecto": "Present perfect subjunctive",
+  "progresivo/presente": "Present progressive (is doing)",
+  "progresivo/pretérito-imperfecto": "Past progressive (was doing)",
+  "progresivo/pretérito-perfecto-simple": "Past progressive (preterite)",
+  "progresivo/futuro": "Future progressive (will be doing)",
+  "progresivo/condicional": "Conditional progressive (would be doing)",
+  "progresivo/pretérito-perfecto-compuesto": "Present perfect progressive (has been doing)",
 };
 
 /** A tense as the conjugation service names it, in plain English for the "more forms" view. */
