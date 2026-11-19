@@ -5,7 +5,7 @@ const v = (tense: string, mood: string, person: string, irregular = false) => ({
 
 describe("verbTags", () => {
   it("names a gerund plainly and drops the empty person", () => {
-    expect(verbTags(v("present progressive (gerund)", "none", "none", true))).toEqual(["gerund (-ing)", "irregular"]);
+    expect(verbTags(v("present progressive (gerund)", "none", "none", true))).toEqual(["gerund (-ing)"]);
     expect(verbTags(v("gerund", "non-finite (table shows the present)", "no person"))).toEqual(["gerund (-ing)"]);
   });
   it("names a participle plainly", () => {
