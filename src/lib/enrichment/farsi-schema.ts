@@ -21,6 +21,8 @@ const wordSchema = z.object({
   english: z.string().min(1),
   level: z.enum(LEVELS),
   register: z.enum(REGISTERS),
+  // Every common meaning from our lexicon. The learner works out which fits from the context.
+  senses: z.array(z.string()).max(8).optional(),
 });
 
 export type FarsiWord = z.infer<typeof wordSchema>;
