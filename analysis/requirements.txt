@@ -3,3 +3,4 @@ uvicorn>=0.30
 spacy>=3.8,<3.9
 hazm>=0.10
 huggingface-hub
+verbecc

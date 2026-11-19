@@ -70,3 +70,45 @@ def test_service_rejects_other_languages_and_too_much_text():
 
 def test_health_needs_no_key():
     assert client.get("/health").json() == {"ok": True}
+
+
+# --- conjugation ---
+from conjugation import conjugate, tense_key  # noqa: E402
+
+
+def test_irregular_verbs_are_flagged_and_regular_ones_are_not():
+    assert conjugate("dar", "Mood=Ind Tense=Pres Person=3")["irregular"] is True
+    assert conjugate("hablar", "Mood=Ind Tense=Pres Person=3")["irregular"] is False
+    assert conjugate("comer", "Mood=Ind Tense=Pres")["irregular"] is False
+    assert conjugate("tener", "Mood=Ind Tense=Pres")["irregular"] is True
+
+
+def test_table_has_the_six_persons_in_the_tense_of_the_form():
+    t = conjugate("hablar", "Mood=Ind Number=Sing Person=3 Tense=Past VerbForm=Fin")
+    assert t["tense"] == "pretérito-perfecto-simple"
+    assert t["table"] == {
+        "yo": "hablé", "tú": "hablaste", "él/ella/usted": "habló",
+        "nosotros": "hablamos", "vosotros": "hablasteis", "ellos/ellas/ustedes": "hablaron",
+    }
+    present = conjugate("dar", "Mood=Ind Tense=Pres")["table"]
+    assert present["yo"] == "doy" and present["nosotros"] == "damos"
+    assert conjugate("ir", "Mood=Ind Tense=Pres")["table"]["yo"] == "voy"
+
+
+def test_participles_show_the_present_and_other_moods_are_mapped():
+    assert tense_key("Tense=Past VerbForm=Part") == ("indicativo", "presente")
+    assert tense_key("Mood=Sub Tense=Pres") == ("subjuntivo", "presente")
+    assert tense_key("Mood=Ind Tense=Imp") == ("indicativo", "pretérito-imperfecto")
+    assert tense_key("Mood=Cnd") == ("condicional", "presente")
+    assert conjugate("hablar", "Mood=Ind Tense=Fut")["table"]["yo"] == "hablaré"
+
+
+def test_reflexive_verbs_keep_their_pronoun():
+    assert conjugate("lavarse", "Mood=Ind Tense=Pres")["table"]["yo"] == "me lavo"
+
+
+def test_conjugate_route_needs_the_key_and_skips_verbs_it_cannot_do():
+    body = {"language": "es", "verbs": [{"lemma": "dar", "morph": "Mood=Ind Tense=Pres"}]}
+    assert client.post("/conjugate", json=body).status_code == 401
+    ok = client.post("/conjugate", json=body, headers=KEY).json()
+    assert ok["verbs"][0]["table"]["yo"] == "doy"
