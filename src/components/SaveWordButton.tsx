@@ -43,8 +43,8 @@ export function SaveWordButton(props: { word: Word; language: Language; sessionI
         className="row-delete"
         onClick={save}
         disabled={state !== "idle"}
-        aria-label={state === "saved" ? "Saved to deck" : "Save to deck"}
-        title={error || (state === "saved" ? "Saved to deck" : "Save to deck")}
+        aria-label={state === "saved" ? "Added to study list" : "Add to study list"}
+        title={error || (state === "saved" ? "Added to study list" : "Add to study list")}
       >
         {state === "saved" ? "✓" : state === "saving" ? "…" : error ? "!" : "＋"}
       </button>
@@ -54,7 +54,7 @@ export function SaveWordButton(props: { word: Word; language: Language; sessionI
   return (
     <div className="stack">
       <button className="btn secondary small" onClick={save} disabled={state !== "idle"}>
-        {state === "saved" ? "Saved to deck ✓" : state === "saving" ? "Saving…" : "＋ Save to deck"}
+        {state === "saved" ? "Added to study list ✓" : state === "saving" ? "Adding…" : "＋ Add to study list"}
       </button>
       {error && <p className="error">{error}</p>}
     </div>

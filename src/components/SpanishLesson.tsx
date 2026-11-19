@@ -1,15 +1,14 @@
 "use client";
 
-import { orderedConjugation } from "@/lib/conjugation-order";
-import { allIdioms, allVerbs, allVocab, keyWords } from "@/lib/enrichment/flatten";
-import type { Enrichment, Idiom, ReflexiveKind, Verb, Vocab } from "@/lib/enrichment/schema";
+import { allIdioms, keyWords } from "@/lib/enrichment/flatten";
+import { paragraphRows, type WordRow } from "@/lib/enrichment/rows";
+import type { Enrichment, Idiom } from "@/lib/enrichment/schema";
 import { lessonPatterns, patternById } from "@/lib/patterns";
 import { HighlightedText } from "./HighlightedText";
 import { KnownPatterns } from "./PatternCard";
-import { NewPatternChips } from "./PatternSheet";
+import { PatternRows } from "./PatternSheet";
 import { Pager } from "./Pager";
-import { SaveAllButton } from "./SaveAllButton";
-import { SaveWordButton } from "./SaveWordButton";
+import { WordList } from "./WordList";
 
 export type SpanishTab = "read" | "vocab" | "idioms" | "verbs";
 
@@ -34,17 +33,9 @@ export function SpanishLesson({
   coreForms: Record<string, number>;
 }) {
   if (tab === "read") return <Reader e={e} sessionId={sessionId} seenPatterns={seenPatterns} coreRanks={coreRanks} coreForms={coreForms} />;
-  if (tab === "vocab") {
-    const words = allVocab(e);
-    return (
-      <div className="stack">
-        <SaveAllButton words={words} language="es" sessionId={sessionId} />
-        <VocabList items={words} sessionId={sessionId} coreRanks={coreRanks} />
-      </div>
-    );
-  }
+  if (tab === "vocab") return <WordList rows={lessonRows(e)} sessionId={sessionId} />;
   if (tab === "idioms") return <IdiomList items={allIdioms(e)} />;
-  return <VerbList items={allVerbs(e)} />;
+  return <WordList rows={lessonRows(e)} sessionId={sessionId} />;
 }
 
 function Reader({
@@ -71,20 +62,11 @@ function Reader({
         <div className="card para-es">
           <HighlightedText text={p.spanish} forms={coreForms} marks={fresh} />
         </div>
-        {p.vocab.length > 0 && (
-          <div className="stack">
-            <div className="section-label">Vocabulary</div>
-            <SaveAllButton words={p.vocab} language="es" sessionId={sessionId} />
-            <VocabList items={p.vocab} sessionId={sessionId} coreRanks={coreRanks} />
-          </div>
-        )}
-        {p.verbs.length > 0 && (
-          <div className="stack">
-            <div className="section-label">Verbs</div>
-            <VerbList items={p.verbs} />
-          </div>
-        )}
-        <NewPatternChips uses={freshUses} language="es" />
+        <div className="stack">
+          <div className="section-label">Vocabulary</div>
+          <WordList rows={paragraphRows(p.spanish, p.vocab, p.verbs)} sessionId={sessionId} />
+        </div>
+        <PatternRows uses={freshUses} language="es" />
         {p.idioms.length > 0 && (
           <div className="stack">
             <div className="section-label">Idioms</div>
@@ -155,37 +137,6 @@ function Tags({ items }: { items: string[] }) {
   );
 }
 
-/** One line per word so a long list is quick to scan, with a save button on each. */
-function VocabList({ items, sessionId, coreRanks }: { items: Vocab[]; sessionId: string; coreRanks: Record<string, number> }) {
-  if (items.length === 0) return <Empty what="vocabulary" />;
-  return (
-    <div className="word-list">
-      {items.map((v, i) => (
-        <div key={i} className="word-row">
-          <div className="word-main">
-            <div>
-              <span className="lead">{v.lemma}</span>
-              {v.surface_form.toLowerCase() !== v.lemma.toLowerCase() && (
-                <span className="muted"> (as written {v.surface_form})</span>
-              )}{" "}
-              · {v.english}
-            </div>
-            <div className="muted">
-              {coreRanks[v.lemma] ? <span className="pill">core #{coreRanks[v.lemma]}</span> : null}{" "}
-              {v.part_of_speech} · {v.level}
-              {v.example_fragment ? ` · “${v.example_fragment}”` : ""}
-            </div>
-            {v.senses && v.senses.length > 1 && (
-              <div className="muted">Could also mean: {v.senses.slice(1).join("; ")}. Which fits here?</div>
-            )}
-          </div>
-          <SaveWordButton word={v} language="es" sessionId={sessionId} compact />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function IdiomList({ items }: { items: Idiom[] }) {
   if (items.length === 0) return <Empty what="idioms" />;
   return (
@@ -210,58 +161,15 @@ function IdiomList({ items }: { items: Idiom[] }) {
   );
 }
 
-const REFLEXIVE_LABELS: Record<ReflexiveKind, string> = {
-  reflexive: "Acts on itself",
-  meaning_change: "Meaning changes with se",
-  reciprocal: "Each other",
-  accidental: "Happens to someone",
-  impersonal: "Impersonal or passive",
-};
-
-function VerbList({ items }: { items: Verb[] }) {
-  if (items.length === 0) return <Empty what="verbs" />;
-  return (
-    <div className="stack">
-      {items.map((v, i) => (
-        <details key={i} className="item">
-          <summary>
-            <span>
-              <span className="lead">{v.form_in_source}</span> · {v.form_english}
-            </span>
-            <span className="pills">
-              {v.reflexive && <span className="pill">se</span>}
-              {v.irregular && <span className="pill">irregular</span>}
-            </span>
-          </summary>
-          <div className="body">
-            <div>
-              <span className="lead">{v.infinitive}</span> · {v.english}
-            </div>
-            <div className="muted">
-              {v.tense} · {v.mood} · {v.person}
-            </div>
-            <table className="conj">
-              <tbody>
-                {orderedConjugation(v.conjugation_table).map(([pronoun, form]) => (
-                  <tr key={pronoun}>
-                    <td>{pronoun}</td>
-                    <td>{form}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {v.reflexive && (
-              <div className="card stack">
-                <div>
-                  <span className="lead">{v.reflexive.infinitive_reflexive}</span> · {v.reflexive.english}
-                </div>
-                <div className="muted">{REFLEXIVE_LABELS[v.reflexive.kind]}</div>
-                <div>{v.reflexive.explanation}</div>
-              </div>
-            )}
-          </div>
-        </details>
-      ))}
-    </div>
-  );
+/** Every word and verb in the lesson as one list, each shown once. */
+function lessonRows(e: Enrichment): WordRow[] {
+  const seen = new Set<string>();
+  return e.paragraphs
+    .flatMap((p) => paragraphRows(p.spanish, p.vocab, p.verbs))
+    .filter((r) => {
+      const key = r.kind === "word" ? `w|${r.vocab.lemma.toLowerCase()}` : `v|${r.verb.infinitive.toLowerCase()}|${r.verb.form_in_source.toLowerCase()}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 }

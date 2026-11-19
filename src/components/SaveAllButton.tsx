@@ -40,7 +40,7 @@ export function SaveAllButton(props: { words: Word[]; language: Language; sessio
         created += data.created ?? 0;
       }
       const already = props.words.length - created;
-      setSummary(already > 0 ? `Saved ${created} new, ${already} already in your deck.` : `Saved ${created} words.`);
+      setSummary(already > 0 ? `Added ${created} new, ${already} already on your study list.` : `Added ${created} words.`);
       setState("saved");
       // On the core list the next words should replace the ones just saved.
       if (props.refresh) router.refresh();
@@ -56,10 +56,10 @@ export function SaveAllButton(props: { words: Word[]; language: Language; sessio
     <div className="stack">
       <button className="btn secondary small" onClick={saveAll} disabled={state !== "idle"}>
         {state === "saving"
-          ? "Saving…"
+          ? "Adding…"
           : state === "saved"
-            ? "Saved ✓"
-            : (props.label ?? `＋ Save all ${props.words.length} words`)}
+            ? "Added ✓"
+            : (props.label ?? `＋ Add all ${props.words.length} to study list`)}
       </button>
       {state === "saved" && <p className="muted">{summary}</p>}
       {error && <p className="error">{error}</p>}

@@ -1,5 +1,5 @@
 import type { Language } from "../languages";
-import { analysisResponseSchema, conjugateResponseSchema, type Analyzer, type Conjugation, type ParagraphAnalysis, type VerbQuery } from "./contract";
+import { allTensesSchema, analysisResponseSchema, conjugateResponseSchema, type AllTenses, type Analyzer, type Conjugation, type ParagraphAnalysis, type VerbQuery } from "./contract";
 
 const TIMEOUT_MS = 20_000;
 
@@ -21,6 +21,13 @@ export function httpAnalyzer(baseUrl: string, key: string, fetchImpl: typeof fet
       const parsed = conjugateResponseSchema.safeParse(await res.json());
       if (!parsed.success || parsed.data.verbs.length !== verbs.length) throw new Error("The analysis service sent something unexpected.");
       return parsed.data.verbs;
+    },
+    async conjugateAll(language: Language, lemma: string): Promise<AllTenses> {
+      const res = await post("/conjugate-all", { language, lemma });
+      if (!res.ok) throw new Error(`The analysis service answered ${res.status}.`);
+      const parsed = allTensesSchema.safeParse(await res.json());
+      if (!parsed.success) throw new Error("The analysis service sent something unexpected.");
+      return parsed.data;
     },
     async analyze(language: Language, paragraphs: string[]): Promise<ParagraphAnalysis[]> {
       const res = await fetchImpl(url, {

@@ -79,18 +79,36 @@ export function PatternSheet(props: { id: string; quote?: string; language: stri
   );
 }
 
-/** The "New to you" strip under a paragraph: one chip per pattern, each opening its popup. */
-export function NewPatternChips(props: { uses: { id: string; quote: string }[]; language: string }) {
+/** "Language patterns" under a paragraph, laid out like the word list: what the text says, which pattern it is, its recipe. Tapping a row opens the popup. */
+export function PatternRows(props: { uses: { id: string; quote: string }[]; language: string }) {
   const [open, setOpen] = useState<{ id: string; quote: string } | null>(null);
   if (props.uses.length === 0) return null;
   return (
-    <div className="new-patterns">
-      <span className="section-label">New to you</span>
-      {props.uses.map((u) => (
-        <button key={u.id} type="button" className={`mark mark-${patternKind(u.id)}`} onClick={() => setOpen(u)}>
-          {patternById(u.id)!.title.replace(/ \(.*\)$/, "")}
-        </button>
-      ))}
+    <div className="stack">
+      <div className="section-label">Language patterns</div>
+      <div className="word-list">
+        {props.uses.map((u) => {
+          const pattern = patternById(u.id)!;
+          return (
+            <button key={u.id} type="button" className="word-row pattern-row" onClick={() => setOpen(u)}>
+              <div className="word-main">
+                <div className="word-entry">
+                  <div className="lead" dir="auto">
+                    {u.quote || pattern.title}
+                  </div>
+                  <div className="word-line">
+                    <span className="muted">pattern:</span> <span className={`mark mark-${patternKind(u.id)}`}>{pattern.title}</span>
+                  </div>
+                  <div className="word-line muted">{pattern.build}</div>
+                </div>
+              </div>
+              <span className="muted" aria-hidden="true">
+                ›
+              </span>
+            </button>
+          );
+        })}
+      </div>
       {open && <PatternSheet id={open.id} quote={open.quote} language={props.language} onClose={() => setOpen(null)} />}
     </div>
   );
