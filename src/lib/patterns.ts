@@ -64,3 +64,18 @@ export function lessonPatterns(paragraphs: { patterns?: PatternUse[] }[]): { pat
   }
   return [...found].map(([id, quotes]) => ({ pattern: BY_ID.get(id)!, quotes }));
 }
+
+export type PatternKind = "tense" | "pronoun" | "mood" | "other";
+
+const KINDS: Record<string, PatternKind> = {
+  present_perfect: "tense", pluperfect: "tense", subjunctive_perfect: "tense", progressive: "tense", continuing: "tense",
+  near_future: "tense", just_did: "tense", again: "tense", hace_time: "tense", llevar_gerund: "tense",
+  fa_present_perfect: "tense", fa_past_perfect: "tense", fa_progressive: "tense", fa_habitual_past: "tense", fa_future: "tense",
+  object_pronouns: "pronoun", gustar_type: "pronoun",
+  obligation: "mood", commands: "mood", fa_subjunctive: "mood",
+};
+
+/** Which highlight colour a pattern gets. Patterns not listed here get the neutral one. */
+export function patternKind(id: string): PatternKind {
+  return KINDS[id] ?? "other";
+}

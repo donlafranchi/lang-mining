@@ -48,3 +48,34 @@ describe("splitForHighlight", () => {
     expect(tokens("می‌خواند")).toEqual(["می‌خواند"]);
   });
 });
+
+import { locatePatternMarks, splitMarked } from "./highlight";
+
+describe("locatePatternMarks", () => {
+  const text = "Ella ha dado un libro y yo he comido.";
+  it("finds each quote in the text, ignoring case, in text order", () => {
+    const marks = locatePatternMarks(text, [{ id: "b", quote: "he comido" }, { id: "a", quote: "Ha Dado" }]);
+    expect(marks).toEqual([
+      { start: 5, end: 12, id: "a" },
+      { start: 27, end: 36, id: "b" },
+    ]);
+  });
+  it("skips quotes that are not in the text, empty quotes, and overlaps", () => {
+    const marks = locatePatternMarks(text, [{ id: "x", quote: "no está" }, { id: "y", quote: "" }, { id: "a", quote: "ha dado" }, { id: "z", quote: "dado un" }]);
+    expect(marks).toEqual([{ start: 5, end: 12, id: "a" }]);
+  });
+});
+
+describe("splitMarked", () => {
+  it("cuts the text into plain and marked parts, keeping core words underlined inside both, and joins back to the text", () => {
+    const text = "Ella ha dado un libro.";
+    const parts = splitMarked(text, { libro: 400, dado: 30 }, [{ start: 5, end: 12, id: "present_perfect" }]);
+    expect(parts.map((p) => p.pieces.map((x) => x.text).join("")).join("")).toBe(text);
+    expect(parts.filter((p) => p.mark).map((p) => p.mark)).toEqual(["present_perfect"]);
+    expect(parts[1].pieces.find((x) => x.rank)?.text).toBe("dado");
+    expect(parts[2].pieces.find((x) => x.rank)?.text).toBe("libro");
+  });
+  it("is one plain part when there are no marks", () => {
+    expect(splitMarked("Hola.", {}, [])).toEqual([{ pieces: [{ text: "Hola." }] }]);
+  });
+});

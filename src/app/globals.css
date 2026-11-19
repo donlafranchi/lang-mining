@@ -568,3 +568,31 @@ a.btn {
   gap: 8px;
   justify-content: flex-end;
 }
+
+/* Marker-pen highlight for a grammar pattern: soft colour with ragged ends and lopsided corners, drawn on every line it wraps to. */
+.mark {
+  --mark: rgba(255, 196, 61, 0.5);
+  color: inherit;
+  text-decoration: none;
+  padding: 0.05em 0.35em;
+  margin: 0 -0.1em;
+  border-radius: 0.9em 0.3em 1em 0.4em / 0.5em 0.9em 0.4em 0.8em;
+  background: linear-gradient(104deg, transparent 0.5%, var(--mark) 3%, var(--mark) 94%, transparent 99%);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.mark-pronoun { --mark: rgba(96, 165, 250, 0.45); }
+.mark-mood { --mark: rgba(74, 222, 128, 0.45); }
+.mark-other { --mark: rgba(244, 114, 182, 0.4); }
+
+.new-patterns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.key-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
