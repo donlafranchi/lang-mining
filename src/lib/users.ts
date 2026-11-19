@@ -1,4 +1,6 @@
-import { explainUsersError } from "./db-errors";
+import { explainSettingsError, explainUsersError } from "./db-errors";
+import type { HelpLevel } from "./help";
+import type { Language } from "./languages";
 import { UserFacingError } from "./sessions";
 import { db } from "./supabase";
 
@@ -13,6 +15,9 @@ export type UserRecord = {
   failed_attempts: number;
   locked_until: string | null;
   created_at: string;
+  /** Chosen help level per language. Missing or null means the language's default (also before migration 0006). */
+  help_es?: string | null;
+  help_fa?: string | null;
 };
 
 /** Everything the sign-in and admin rules need from storage, so the rules can be tested without a database. */
@@ -28,6 +33,7 @@ export interface UserRepo {
   /** Hand lessons and deck cards that belong to nobody (made before accounts existed) to this person. */
   adoptUnowned(userId: string): Promise<void>;
   setPasscode(id: string, passcodeHash: string): Promise<void>;
+  setHelp(id: string, language: Language, help: HelpLevel): Promise<void>;
   /** Also deletes their lessons and deck (the tables cascade). */
   remove(id: string): Promise<void>;
 }
@@ -111,6 +117,18 @@ export function supabaseUserRepo(): UserRepo {
         .update({ passcode_hash: passcodeHash, token_version: version + 1, failed_attempts: 0, locked_until: null })
         .eq("id", id);
       if (updateError) fail("Could not reset the passcode", updateError.message);
+    },
+
+    async setHelp(id, language, help) {
+      const { error } = await db()
+        .from("app_users")
+        .update({ [language === "fa" ? "help_fa" : "help_es"]: help })
+        .eq("id", id);
+      if (error) {
+        const explained = explainSettingsError(error.message);
+        if (explained) throw new UserFacingError(explained, 503);
+        fail("Could not save the setting", error.message);
+      }
     },
 
     async remove(id) {

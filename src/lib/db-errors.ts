@@ -28,3 +28,11 @@ export function explainUsersError(message: string): string | null {
   }
   return null;
 }
+
+/** The help setting needs migration 0006. Says so when its column is missing, otherwise returns null. */
+export function explainSettingsError(message: string): string | null {
+  if (/help_(es|fa)/i.test(message) && /(does not exist|schema cache|could not find)/i.test(message)) {
+    return "Saving help levels needs a one-time database update. Run supabase/migrations/0006_user_help.sql in the Supabase SQL Editor, then try again.";
+  }
+  return null;
+}

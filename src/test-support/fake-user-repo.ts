@@ -62,6 +62,12 @@ export function fakeUserRepo(initial: UserRecord[] = []) {
       u.failed_attempts = 0;
       u.locked_until = null;
     },
+    async setHelp(id, language, help) {
+      calls.push(`setHelp:${id}:${language}:${help}`);
+      const u = users.get(id)!;
+      if (language === "fa") u.help_fa = help;
+      else u.help_es = help;
+    },
     async remove(id) {
       calls.push(`remove:${id}`);
       users.delete(id);

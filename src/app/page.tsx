@@ -37,7 +37,7 @@ export default async function Home() {
 
       <InstallHint />
 
-      <PasteForm />
+      <PasteForm helps={user.help} />
 
       {deck && (
         <nav className="deck-links" aria-label="Vocabulary deck">
