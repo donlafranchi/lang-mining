@@ -665,6 +665,7 @@ button.mark {
   text-align: center;
 }
 .loading-emoji {
-  font-size: 4.5rem;
+  font-size: 9rem;
   line-height: 1;
+  margin: 12px 0;
 }
