@@ -451,3 +451,44 @@ describe("enrichText with our own lexicon", () => {
     expect(lesson.paragraphs[0].vocab).toHaveLength(1);
   });
 });
+
+describe("enrichText with the analysis service", () => {
+  const setup = async () => {
+    const { memoryStore } = await import("../../test-support/memory-lexicon");
+    const m = memoryStore();
+    await m.store.upsertLemmas([
+      {
+        language: "es", lemma: "párrafo", lemma_key: "párrafo", pos: "noun", transliteration: null, level: null,
+        core_rank: 100, senses: [{ english: "paragraph", count: 1 }], source: "core", uses: 0,
+      },
+    ]);
+    return m;
+  };
+  const text = "Los párrafos largos cansan a la gente que lee mucho en la ciudad todos los días del año.";
+  const analyzerFor = (lemma: string) => ({
+    analyze: async (_l: string, paragraphs: string[]) =>
+      paragraphs.map((p) => ({
+        tokens: [...p.matchAll(/\p{L}+/gu)].map((m) => ({
+          text: m[0], start: m.index!, end: m.index! + m[0].length,
+          lemma: m[0].toLowerCase() === "párrafos" ? lemma : m[0].toLowerCase(), pos: "noun", morph: "", is_word: true,
+        })),
+      })),
+  });
+
+  it("explains an inflected word from the lexicon using the analyzer's dictionary form, and remembers the form", async () => {
+    const m = await setup();
+    const complete = vi.fn(fakeModel());
+    const lesson = (await enrichText({ text, help: "full", complete, lexicon: m.store, analyzer: analyzerFor("párrafo") })) as Enrichment;
+    expect(lesson.paragraphs[0].vocab.find((v) => v.lemma === "párrafo")).toMatchObject({ surface_form: "párrafos", english: "paragraph" });
+    expect(complete.mock.calls[0][0].messages[0].content).toMatch(/already explains.*párrafos/);
+    expect(m.forms.has("es|párrafos|párrafo|noun")).toBe(true);
+  });
+
+  it("builds the lesson as usual when the analysis service is down", async () => {
+    const m = await setup();
+    const down = { analyze: async () => { throw new Error("connection refused"); } };
+    const lesson = (await enrichText({ text, help: "full", complete: vi.fn(fakeModel()), lexicon: m.store, analyzer: down })) as Enrichment;
+    expect(lesson.paragraphs).toHaveLength(1);
+    expect(lesson.paragraphs[0].vocab.some((v) => v.lemma === "párrafo")).toBe(false);
+  });
+});

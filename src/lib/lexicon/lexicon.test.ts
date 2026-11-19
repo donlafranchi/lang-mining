@@ -181,3 +181,17 @@ describe("seedCore", () => {
     }
   });
 });
+
+describe("harvestAnalysis", () => {
+  const tok = (text: string, lemma: string, pos: string, morph = "") => ({ text, lemma, pos, morph, is_word: true });
+
+  it("keeps which written form belongs to which word, counting repeats, for content words only", async () => {
+    const { store, forms } = memoryStore();
+    const { harvestAnalysis } = await import("./harvest");
+    await harvestAnalysis(store, "es", [
+      { tokens: [tok("niños", "niño", "noun", "Number=Plur"), tok("niños", "niño", "noun"), tok("los", "el", "det"), tok("casa", "casa", "noun"), { ...tok(".", ".", "other"), is_word: false }] },
+    ]);
+    expect([...forms.keys()]).toEqual(["es|niños|niño|noun"]);
+    expect(forms.get("es|niños|niño|noun")).toMatchObject({ uses: 2, morph: "Number=Plur" });
+  });
+});

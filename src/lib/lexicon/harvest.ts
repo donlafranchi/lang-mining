@@ -144,3 +144,29 @@ export async function harvestSafely(store: LexiconStore, language: Language, les
     console.error("lexicon harvest skipped", err instanceof Error ? err.message : err);
   }
 }
+
+/**
+ * The analyzer tells us which written form belongs to which dictionary word. Keep that, so later lookups of the same
+ * form need no analysis. Only content words are kept, and a form that equals its dictionary word adds nothing.
+ */
+export async function harvestAnalysis(
+  store: LexiconStore,
+  language: Language,
+  analyses: { tokens: { text: string; lemma: string; pos: string; morph: string; is_word: boolean }[] }[],
+): Promise<void> {
+  const forms = new Map<string, FormRow>();
+  for (const p of analyses) {
+    for (const t of p.tokens) {
+      const pos = normalizePos(t.pos);
+      if (!t.is_word || !["noun", "verb", "adj", "adv"].includes(pos)) continue;
+      const form_key = lexiconKey(t.text);
+      const lemma_key = lexiconKey(t.lemma);
+      if (!form_key || !lemma_key || form_key === lemma_key) continue;
+      const id = `${form_key}|${lemma_key}|${pos}`;
+      const have = forms.get(id);
+      if (have) have.uses += 1;
+      else forms.set(id, { language, form_key, lemma_key, pos, morph: t.morph, uses: 1 });
+    }
+  }
+  await writeMerged(store, language, { lemmas: new Map(), forms });
+}
