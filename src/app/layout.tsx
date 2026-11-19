@@ -3,10 +3,10 @@ import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "lang-mining",
-  description: "Mine Spanish and Farsi lessons out of anything you read.",
+  title: "Hand to Brain",
+  description: "Learn Spanish and Farsi from anything you read.",
   applicationName: "lang-mining",
-  appleWebApp: { capable: true, title: "lang-mining", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "Hand to Brain", statusBarStyle: "default" },
   // Stops iOS turning numbers in a lesson into phone links.
   formatDetection: { telephone: false },
 };

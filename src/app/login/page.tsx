@@ -26,7 +26,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
   return (
     <main className="shell">
       <div className="brand">
-        <h1>lang-mining</h1>
+        <h1>Hand to Brain</h1>
       </div>
       {setupError && <p className="error">{setupError}</p>}
       <LoginForm firstRun={firstRun} error={error} />

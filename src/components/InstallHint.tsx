@@ -51,7 +51,7 @@ export function InstallHint() {
 
   return (
     <div className="card stack install-hint" role="note">
-      <div className="lead">Install lang-mining</div>
+      <div className="lead">Install Hand to Brain</div>
       {hint === "prompt" ? (
         <>
           <p className="muted">Add it to your home screen to open it like an app, full screen.</p>

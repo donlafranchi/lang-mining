@@ -3,9 +3,9 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "lang-mining",
-    short_name: "lang-mining",
-    description: "Mine Spanish and Farsi lessons out of anything you read.",
+    name: "Hand to Brain",
+    short_name: "Hand to Brain",
+    description: "Hand to Brain: learn Spanish and Farsi from anything you read.",
     start_url: "/",
     scope: "/",
     display: "standalone",
