@@ -121,6 +121,16 @@ function paragraphsFromHtml(html: string): string[] {
 const BOILERPLATE =
   /^(leer (también|más)|lee (también|más)|te (puede|podría) interesar|sigue leyendo|síguenos|suscríbete|suscr[ií]base|compartir|comparte|comentarios?|publicidad|anuncio|foto:|fotograf[ií]a:|imagen:|etiquetas?:|más noticias|noticias relacionadas|مطالب مرتبط|بیشتر بخوانید|اشتراک[‌ ]?گذاری|منبع:)/i;
 
+// Whole short lines that are page furniture: reading time, bylines, dates, "listen to this", ads. Matched on the whole
+// line, so a sentence that merely starts the same way ("Por eso nadie vino.") stays.
+const FURNITURE: RegExp[] = [
+  /^\d+\s*(?:-\s*\d+\s*)?(?:min(?:ute)?s?\.?|minutos?\.?)\s*(?:read|de lectura|para leer)\.?$/i,
+  /^(?:tiempo de lectura|lectura|reading time|read time)\s*:?\s*~?\d+\s*(?:min(?:ute)?s?\.?|minutos?\.?)\.?$/i,
+  /^(?:[Pp]or|[Bb]y|[Rr]edacci[oó]n|[Tt]exto)\s*:?\s+\p{Lu}[\p{L}.'’-]*(?:\s+(?:de\s+|del\s+|la\s+)?\p{Lu}[\p{L}.'’-]*){0,3}$/u,
+  /^(?:publicado|actualizado|updated|published|modificado|fecha)(?:\s+el)?\s*:?\s*[\d\p{L}.,:/ -]{4,40}$/iu,
+  /^(?:escucha esta nota|escuchar|listen to this(?: article)?|advertisement|advertising|publicidad|anuncio)$/i,
+];
+
 /** Remove repeats and the share/related-link lines news pages put between paragraphs. Short headings stay. */
 export function cleanParagraphs(paragraphs: string[]): string[] {
   const seen = new Set<string>();
@@ -129,6 +139,7 @@ export function cleanParagraphs(paragraphs: string[]): string[] {
     const text = p.trim();
     if (!text) continue;
     if (BOILERPLATE.test(text) && text.length < 120) continue;
+    if (text.length < 60 && FURNITURE.some((re) => re.test(text))) continue;
     if (seen.has(text)) continue;
     seen.add(text);
     out.push(text);
@@ -185,7 +196,7 @@ async function assertPublicHost(url: URL): Promise<void> {
 }
 
 /** Fetch a public article and return its readable text. Redirects are followed manually so every hop is re-checked. */
-export async function fetchArticleText(rawUrl: string): Promise<{ text: string; title: string; finalUrl: string }> {
+export async function fetchArticleText(rawUrl: string): Promise<{ text: string; title: string; finalUrl: string; html: string }> {
   let url = validateArticleUrl(rawUrl);
 
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
@@ -218,7 +229,7 @@ export async function fetchArticleText(rawUrl: string): Promise<{ text: string; 
 
     const html = decodeHtml(new Uint8Array(buffer), type);
     const { text, title } = extractArticle(html, url.toString());
-    return { text, title, finalUrl: url.toString() };
+    return { text, title, finalUrl: url.toString(), html };
   }
   throw new Error("Too many redirects.");
 }
