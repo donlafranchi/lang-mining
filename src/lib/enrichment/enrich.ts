@@ -77,7 +77,7 @@ async function completeValidated<T>(args: {
   try {
     second = await args.complete({ system: args.system, messages: retryMessages });
   } catch (err) {
-    if (err instanceof OutputTruncatedError) throw new EnrichmentError(TOO_LONG);
+    if (err instanceof OutputTruncatedError) throw new TooLongError();
     throw err;
   }
   const secondResult = args.parse(second);
@@ -87,6 +87,14 @@ async function completeValidated<T>(args: {
 }
 
 const TOO_LONG = "Enrichment failed: the answer was too long and was cut off twice. Try a shorter text.";
+
+/** A batch whose answer was cut off even after asking for a shorter one. The caller can split the batch. */
+export class TooLongError extends EnrichmentError {
+  constructor() {
+    super(TOO_LONG);
+    this.name = "TooLongError";
+  }
+}
 
 /** The first answer was cut off, so there is nothing to feed back. Ask again for a shorter one. */
 async function retryShorter<T>(args: {
@@ -101,7 +109,7 @@ async function retryShorter<T>(args: {
   try {
     raw = await args.complete({ system: args.system, messages });
   } catch (err) {
-    if (err instanceof OutputTruncatedError) throw new EnrichmentError(TOO_LONG);
+    if (err instanceof OutputTruncatedError) throw new TooLongError();
     throw err;
   }
   const result = args.parse(raw);
@@ -209,18 +217,28 @@ async function enrichInBatches<R, L>(args: {
   const patternsByCode = analyses && args.detectPatterns ? analyses.map((a, i) => args.detectPatterns!(a, paragraphs[i])) : null;
   const system = buildSystemPrompt(args.language, args.help, { patterns: !patternsByCode });
   const batches = batchParagraphs(paragraphs, batchLimits(args.language, args.help));
-  const results = await mapLimit(batches, BATCH_CONCURRENCY, (batch: NumberedParagraph[]) =>
-    completeValidated({
-      system,
-      messages: [{ role: "user", content: buildBatchUserPrompt(batch, skips, verbSkips) }],
-      complete: args.complete,
-      parse: (raw) =>
-        args.parse(
-          raw,
-          batch.map((p) => p.n),
-        ),
-    }),
-  );
+  // A batch whose answer is cut off twice is split in half and each half asked again, down to one paragraph.
+  const runBatch = async (batch: NumberedParagraph[]): Promise<R[]> => {
+    try {
+      return [
+        await completeValidated({
+          system,
+          messages: [{ role: "user", content: buildBatchUserPrompt(batch, skips, verbSkips) }],
+          complete: args.complete,
+          parse: (raw) =>
+            args.parse(
+              raw,
+              batch.map((p) => p.n),
+            ),
+        }),
+      ];
+    } catch (err) {
+      if (!(err instanceof TooLongError) || batch.length < 2) throw err;
+      const mid = Math.ceil(batch.length / 2);
+      return [...(await runBatch(batch.slice(0, mid))), ...(await runBatch(batch.slice(mid)))];
+    }
+  };
+  const results = (await mapLimit(batches, BATCH_CONCURRENCY, runBatch)).flat();
   const lesson = args.merge(paragraphs, results);
   return args.inject ? args.inject(lesson, explained, paragraphs, patternsByCode, verbsByCode) : lesson;
 }

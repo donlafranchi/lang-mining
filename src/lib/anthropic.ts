@@ -10,7 +10,7 @@ export function createAnthropicComplete(model: ModelId): CompleteFn {
   return async ({ system, messages }) => {
     const response = await anthropic.messages.create({
       model,
-      max_tokens: 8000,
+      max_tokens: 16000,
       system,
       messages,
     });
