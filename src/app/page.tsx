@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DeleteButton } from "@/components/DeleteButton";
+import { InstallHint } from "@/components/InstallHint";
 import { PasteForm } from "@/components/PasteForm";
 import { deckSummary } from "@/lib/deck";
 import { listSessions, type SessionRow } from "@/lib/sessions";
@@ -28,6 +29,8 @@ export default async function Home() {
       <div className="brand">
         <h1>lang-mining</h1>
       </div>
+
+      <InstallHint />
 
       <PasteForm />
 

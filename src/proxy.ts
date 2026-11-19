@@ -25,7 +25,8 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Everything except static assets and the unlock page and endpoint.
-    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons/|unlock|api/unlock).*)",
+    // Everything except static assets, the unlock page and endpoint, and what an installed app needs before anyone has
+    // unlocked it: the service worker, the offline page and the icons. None of them holds private data.
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons/|apple-icon.png|sw.js|offline|unlock|api/unlock).*)",
   ],
 };
