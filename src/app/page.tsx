@@ -40,12 +40,9 @@ export default async function Home() {
       <PasteForm helps={user.help} />
 
       {deck && (
-        <nav className="deck-links" aria-label="Vocabulary deck">
-          <Link className="btn secondary" href="/deck">
-            Deck ({deck.total})
-          </Link>
-          <Link className="btn secondary" href="/quiz">
-            Quiz ({deck.due} due)
+        <nav className="deck-links" aria-label="Study">
+          <Link className="btn secondary" href="/study">
+            Study{deck ? ` (${deck.due} due)` : ""}
           </Link>
         </nav>
       )}

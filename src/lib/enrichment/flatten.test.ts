@@ -37,6 +37,7 @@ const paragraph = (over: Partial<Enrichment["paragraphs"][number]>) => ({
   verbs: [],
   vocab: [],
   idioms: [],
+  patterns: [],
   ...over,
 });
 const lesson = (paragraphs: Enrichment["paragraphs"]): Enrichment => ({
