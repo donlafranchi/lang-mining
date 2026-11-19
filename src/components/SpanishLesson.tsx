@@ -3,6 +3,7 @@
 import { allIdioms, allVerbs, allVocab } from "@/lib/enrichment/flatten";
 import type { Enrichment, Idiom, ReflexiveKind, Verb, Vocab } from "@/lib/enrichment/schema";
 import { lessonPatterns } from "@/lib/patterns";
+import { HighlightedText } from "./HighlightedText";
 import { KnownPatterns, NewPatterns, PatternTags } from "./PatternCard";
 import { Pager } from "./Pager";
 import { SaveAllButton } from "./SaveAllButton";
@@ -20,6 +21,7 @@ export function SpanishLesson({
   sessionId,
   seenPatterns,
   coreRanks,
+  coreForms,
 }: {
   e: Enrichment;
   tab: SpanishTab;
@@ -27,8 +29,9 @@ export function SpanishLesson({
   /** Pattern ids this person has already been shown. */
   seenPatterns: string[];
   coreRanks: Record<string, number>;
+  coreForms: Record<string, number>;
 }) {
-  if (tab === "read") return <Reader e={e} sessionId={sessionId} seenPatterns={seenPatterns} coreRanks={coreRanks} />;
+  if (tab === "read") return <Reader e={e} sessionId={sessionId} seenPatterns={seenPatterns} coreRanks={coreRanks} coreForms={coreForms} />;
   if (tab === "vocab") {
     const words = allVocab(e);
     return (
@@ -47,16 +50,20 @@ function Reader({
   sessionId,
   seenPatterns,
   coreRanks,
+  coreForms,
 }: {
   e: Enrichment;
   sessionId: string;
   seenPatterns: string[];
   coreRanks: Record<string, number>;
+  coreForms: Record<string, number>;
 }) {
   const patterns = lessonPatterns(e.paragraphs);
   const pages = e.paragraphs.map((p, i) => (
     <div key={i} className="stack">
-      <div className="card para-es">{p.spanish}</div>
+      <div className="card para-es">
+        <HighlightedText text={p.spanish} forms={coreForms} />
+      </div>
       <div className="card stack">
         <div className="lead">Key phrase</div>
         <div>{p.key_phrase.spanish}</div>
@@ -89,6 +96,7 @@ function Reader({
   return (
     <div className="stack">
       <div className="card">{e.summary}</div>
+      <p className="muted">Underlined words are among the 2,000 most common.</p>
       <NewPatterns patterns={patterns} seen={seenPatterns} />
       <Pager pages={pages} label="Paragraph" />
       <KnownPatterns patterns={patterns} seen={seenPatterns} />

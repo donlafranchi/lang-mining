@@ -3,6 +3,7 @@
 import { allFarsiIdioms, allFarsiVerbs, allFarsiWords } from "@/lib/enrichment/flatten";
 import type { FarsiEnrichment, FarsiIdiom, FarsiVerb, FarsiWord } from "@/lib/enrichment/farsi-schema";
 import { lessonPatterns } from "@/lib/patterns";
+import { HighlightedText } from "./HighlightedText";
 import { KnownPatterns, NewPatterns, PatternTags } from "./PatternCard";
 import { Pager } from "./Pager";
 import { SaveAllButton } from "./SaveAllButton";
@@ -28,6 +29,7 @@ export function FarsiLesson({
   sessionId,
   seenPatterns,
   coreRanks,
+  coreForms,
 }: {
   e: FarsiEnrichment;
   tab: FarsiTab;
@@ -35,8 +37,9 @@ export function FarsiLesson({
   /** Pattern ids this person has already been shown. */
   seenPatterns: string[];
   coreRanks: Record<string, number>;
+  coreForms: Record<string, number>;
 }) {
-  if (tab === "read") return <Reader e={e} sessionId={sessionId} seenPatterns={seenPatterns} coreRanks={coreRanks} />;
+  if (tab === "read") return <Reader e={e} sessionId={sessionId} seenPatterns={seenPatterns} coreRanks={coreRanks} coreForms={coreForms} />;
   if (tab === "vocab") {
     const words = allFarsiWords(e);
     return (
@@ -55,18 +58,22 @@ function Reader({
   sessionId,
   seenPatterns,
   coreRanks,
+  coreForms,
 }: {
   e: FarsiEnrichment;
   sessionId: string;
   seenPatterns: string[];
   coreRanks: Record<string, number>;
+  coreForms: Record<string, number>;
 }) {
   const patterns = lessonPatterns(e.paragraphs);
   const pages = e.paragraphs.map((p, i) => (
     <div key={i} className="stack">
       <div className="card stack">
         <div className="para-fa">
-          <Fa>{p.persian}</Fa>
+          <Fa>
+            <HighlightedText text={p.persian} forms={coreForms} />
+          </Fa>
         </div>
         <div className="translit">{p.transliteration}</div>
       </div>
@@ -111,6 +118,7 @@ function Reader({
   return (
     <div className="stack">
       <div className="card">{e.summary}</div>
+      <p className="muted">Underlined words are among the 2,000 most common.</p>
       <NewPatterns patterns={patterns} seen={seenPatterns} />
       <Pager pages={pages} label="Paragraph" />
       <KnownPatterns patterns={patterns} seen={seenPatterns} />

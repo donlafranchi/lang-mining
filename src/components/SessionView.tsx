@@ -33,6 +33,8 @@ export function SessionView(props: {
   seenPatterns: string[];
   /** Lemma to rank, for the words in this lesson that are on the core 2,000 list. */
   coreRanks: Record<string, number>;
+  /** Written form to rank, for the words in the text to underline as core words. */
+  coreForms: Record<string, number>;
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("read");
@@ -130,9 +132,9 @@ export function SessionView(props: {
             ))}
           </div>
           {props.session.language === "fa" ? (
-            <FarsiLesson e={enrichment as FarsiEnrichment} tab={tab} sessionId={props.session.id} seenPatterns={props.seenPatterns} coreRanks={props.coreRanks} />
+            <FarsiLesson e={enrichment as FarsiEnrichment} tab={tab} sessionId={props.session.id} seenPatterns={props.seenPatterns} coreRanks={props.coreRanks} coreForms={props.coreForms} />
           ) : (
-            <SpanishLesson e={enrichment as Enrichment} tab={tab} sessionId={props.session.id} seenPatterns={props.seenPatterns} coreRanks={props.coreRanks} />
+            <SpanishLesson e={enrichment as Enrichment} tab={tab} sessionId={props.session.id} seenPatterns={props.seenPatterns} coreRanks={props.coreRanks} coreForms={props.coreForms} />
           )}
         </>
       )}
