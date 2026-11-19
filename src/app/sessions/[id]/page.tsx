@@ -29,6 +29,7 @@ export default async function SessionPage(props: PageProps<"/sessions/[id]">) {
         enrichment={detail.enrichment}
         model={detail.model}
         sourceAvailable={detail.sourceAvailable}
+        defaultHelp={user.help[detail.session.language]}
       />
       <div className="danger-zone">
         <DeleteButton id={detail.session.id} redirectTo="/" label="Delete this lesson" />

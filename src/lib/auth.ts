@@ -2,10 +2,12 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
 import { cache } from "react";
+import { resolveHelp, type HelpLevel } from "./help";
+import type { Language } from "./languages";
 import { SESSION_COOKIE, verifySession } from "./session-token";
 import { supabaseUserRepo } from "./users";
 
-export type CurrentUser = { id: string; name: string; isAdmin: boolean };
+export type CurrentUser = { id: string; name: string; isAdmin: boolean; help: Record<Language, HelpLevel> };
 
 /**
  * The secret that signs session cookies. In production it must be set. Outside production a fixed value is used so
@@ -31,7 +33,12 @@ export const currentUser = cache(async (): Promise<CurrentUser | null> => {
 
   const user = await supabaseUserRepo().getById(payload.userId);
   if (!user || user.token_version !== payload.version) return null;
-  return { id: user.id, name: user.name, isAdmin: user.is_admin };
+  return {
+    id: user.id,
+    name: user.name,
+    isAdmin: user.is_admin,
+    help: { es: resolveHelp(user.help_es, "es"), fa: resolveHelp(user.help_fa, "fa") },
+  };
 });
 
 export const SIGN_IN_FIRST = { error: "Sign in first." };

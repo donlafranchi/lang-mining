@@ -24,8 +24,8 @@ export async function POST(request: Request, ctx: RouteContext<"/api/sessions/[i
 
   try {
     const { text, language } = await startRerun(id, user.id);
-    // The default level depends on the session's language, so it is resolved once that is known.
-    const help = resolveHelp(body.help, language);
+    // The default is the person's own setting for this session's language, known once the session is read.
+    const help = body.help === undefined ? user.help[language] : resolveHelp(body.help, language);
     after(() => finishRerun({ id, text, language, help, model }));
     return NextResponse.json({ ok: true });
   } catch (err) {
