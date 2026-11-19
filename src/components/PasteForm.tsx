@@ -4,19 +4,19 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { helpLabel, type HelpLevel } from "@/lib/help";
-import { DEFAULT_LANGUAGE, isLanguage, type Language } from "@/lib/languages";
+import { type Language } from "@/lib/languages";
+import { LANGUAGE_COOKIE } from "@/lib/language-cookie";
 import { DEFAULT_MODEL, isModel, type ModelId } from "@/lib/models";
 import { LanguageSelect } from "./LanguageSelect";
 import { ModelSelect } from "./ModelSelect";
 
 const MODEL_KEY = "lm_model";
-const LANGUAGE_KEY = "lm_language";
 
 /** helps is the person's saved help level per language (Settings), used for every lesson they mine. */
-export function PasteForm(props: { helps: Record<Language, HelpLevel> }) {
+export function PasteForm(props: { helps: Record<Language, HelpLevel>; initialLanguage: Language }) {
   const router = useRouter();
   const [input, setInput] = useState("");
-  const [language, setLanguage] = useState<Language>(DEFAULT_LANGUAGE);
+  const [language, setLanguage] = useState<Language>(props.initialLanguage);
   const [model, setModel] = useState<ModelId>(DEFAULT_MODEL);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -24,20 +24,17 @@ export function PasteForm(props: { helps: Record<Language, HelpLevel> }) {
   // Remember the last language and model per device. A convenience only, so failures are ignored.
   useEffect(() => {
     try {
-      const savedLanguage = localStorage.getItem(LANGUAGE_KEY);
       const savedModel = localStorage.getItem(MODEL_KEY);
       // Runs once after mount on purpose: reading localStorage during render would break hydration.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (savedLanguage && isLanguage(savedLanguage)) setLanguage(savedLanguage);
       if (savedModel && isModel(savedModel)) setModel(savedModel);
     } catch {}
   }, []);
 
   function pickLanguage(value: Language) {
     setLanguage(value);
-    try {
-      localStorage.setItem(LANGUAGE_KEY, value);
-    } catch {}
+    // A cookie, so the server can open Deck, Quiz and the rest in the same language.
+    document.cookie = `${LANGUAGE_COOKIE}=${value}; path=/; max-age=31536000; samesite=lax`;
   }
 
   function pickModel(value: ModelId) {
