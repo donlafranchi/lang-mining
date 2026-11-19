@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AddUserForm } from "@/components/AddUserForm";
+import { SeedLexiconButton } from "@/components/SeedLexiconButton";
 import { UserActions } from "@/components/UserActions";
 import { requireUser } from "@/lib/auth";
 import { supabaseUserRepo, type UserRecord } from "@/lib/users";
@@ -52,6 +53,8 @@ export default async function AdminPage() {
         </section>
 
         <AddUserForm />
+
+        <SeedLexiconButton />
       </div>
     </main>
   );

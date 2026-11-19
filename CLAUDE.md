@@ -9,6 +9,11 @@ The app is built on two ideas:
 2. Learning by writing by hand. Words are written with a finger (or a stylus) on the screen, in learning and in quizzing, because physically writing helps memory.
 The users are iPhone users. Sign-in is name and password only, never email, and must work with the iOS password manager.
 
+## Language pipeline direction (Don, Nov 2026)
+- Rely on code and our own data for as much of the language work as possible (our own lexicon, then spaCy for Spanish and Hazm or Stanza for Farsi behind an `Analyzer` contract). Use the LLM only for what code cannot do: paragraph translation, idioms, grammar notes, titles, filling gaps. See docs/architecture-language-pipeline.md.
+- The LLM does not pick the right meaning of an ambiguous word. The lexicon keeps every common sense and the learner works out which fits from context.
+- Order: lexicon and harvest, then dictionary import, then the analysis worker.
+
 ## Stack
 - Next.js (App Router, TypeScript) on Vercel, mobile-first PWA
 - Supabase (Postgres, Storage, Realtime)

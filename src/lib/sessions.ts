@@ -3,6 +3,8 @@ import { explainSaveError, explainUsersError } from "./db-errors";
 import { enrichText, type Lesson } from "./enrichment/enrich";
 import { farsiEnrichmentSchema } from "./enrichment/farsi-schema";
 import { enrichmentSchema, type Dialect } from "./enrichment/schema";
+import { harvestSafely } from "./lexicon/harvest";
+import { supabaseLexiconStore } from "./lexicon/store";
 import { cleanTitle } from "./titles";
 import { fetchArticleText, looksLikeUrl } from "./ingest/extract";
 import type { HelpLevel } from "./help";
@@ -180,6 +182,7 @@ export async function buildSession(args: {
     await saveEnrichment(args.id, args.model, enrichment);
     await db().from("sessions").update({ status: "ready", error: null }).eq("id", args.id);
     await applyModelTitle(args.id, args.autoTitle ?? null, enrichment.title);
+    await harvestSafely(supabaseLexiconStore(), args.language, enrichment);
   } catch (err) {
     console.error("buildSession failed", err);
     const message = err instanceof Error ? err.message : "Enrichment failed.";
@@ -221,6 +224,7 @@ export async function finishRerun(args: { id: string; text: string; language: La
     });
     await saveEnrichment(args.id, args.model, enrichment);
     await db().from("sessions").update({ status: "ready", error: null }).eq("id", args.id);
+    await harvestSafely(supabaseLexiconStore(), args.language, enrichment);
   } catch (err) {
     console.error("rerun failed", err);
   }
