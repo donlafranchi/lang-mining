@@ -5,6 +5,9 @@ import { useState } from "react";
 import type { DeckItem } from "@/lib/deck";
 import type { Language } from "@/lib/languages";
 import type { Rating } from "@/lib/srs";
+import { HandwritingPad } from "./HandwritingPad";
+
+export type QuizMode = "read" | "write";
 
 type Cards = Pick<DeckItem, "id" | "payload">[];
 
@@ -14,9 +17,10 @@ const RATINGS: { id: Rating; label: string; hint: string }[] = [
   { id: "easy", label: "Easy", hint: "skip ahead" },
 ];
 
-export function Quiz(props: { cards: Cards; language: Language }) {
+export function Quiz(props: { cards: Cards; language: Language; mode: QuizMode }) {
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
+  const [hasInk, setHasInk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [tally, setTally] = useState<Record<Rating, number>>({ again: 0, good: 0, easy: 0 });
@@ -43,6 +47,7 @@ export function Quiz(props: { cards: Cards; language: Language }) {
       }
       setTally((t) => ({ ...t, [rating]: t[rating] + 1 }));
       setFlipped(false);
+      setHasInk(false);
       setIndex((i) => i + 1);
     } catch {
       setError("Could not reach the server. Check your connection and try again.");
@@ -58,7 +63,7 @@ export function Quiz(props: { cards: Cards; language: Language }) {
           {total} reviewed: {tally.again} again, {tally.good} good, {tally.easy} easy.
         </p>
         <p className="muted">Cards you missed come back in 10 minutes.</p>
-        <Link className="btn secondary" href={`/quiz?language=${props.language}`}>
+        <Link className="btn secondary" href={`/quiz?language=${props.language}&mode=${props.mode}`}>
           Check for more
         </Link>
       </div>
@@ -71,30 +76,56 @@ export function Quiz(props: { cards: Cards; language: Language }) {
         {index + 1} / {total}
       </p>
 
-      <div className="card quiz-card stack">
-        <div className="quiz-word" dir={dir} lang={props.language}>
-          {card.payload.lemma}
-        </div>
-
-        {flipped && (
-          <div className="stack">
-            {card.payload.transliteration && <div className="translit">{card.payload.transliteration}</div>}
-            <div className="quiz-answer">{card.payload.english}</div>
+      {props.mode === "write" ? (
+        <div className="stack">
+          <div className="card quiz-card stack">
+            <div className="muted">Write this in {props.language === "fa" ? "Farsi" : "Spanish"}</div>
+            <div className="quiz-word">{card.payload.english}</div>
             {card.payload.part_of_speech && <div className="muted">{card.payload.part_of_speech}</div>}
-            {card.payload.example && (
-              <div dir={dir} lang={props.language}>
-                “{card.payload.example}”
-              </div>
-            )}
           </div>
-        )}
-      </div>
+          {/* Keyed on the card so the pad starts blank for every word. */}
+          <HandwritingPad key={card.id} locked={flipped} onInkChange={setHasInk} />
+          {flipped && (
+            <div className="card quiz-card stack">
+              <div className="muted">The word</div>
+              <div className="quiz-word" dir={dir} lang={props.language}>
+                {card.payload.lemma}
+              </div>
+              {card.payload.transliteration && <div className="translit">{card.payload.transliteration}</div>}
+              {card.payload.example && (
+                <div dir={dir} lang={props.language}>
+                  “{card.payload.example}”
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="card quiz-card stack">
+          <div className="quiz-word" dir={dir} lang={props.language}>
+            {card.payload.lemma}
+          </div>
+
+          {flipped && (
+            <div className="stack">
+              {card.payload.transliteration && <div className="translit">{card.payload.transliteration}</div>}
+              <div className="quiz-answer">{card.payload.english}</div>
+              {card.payload.part_of_speech && <div className="muted">{card.payload.part_of_speech}</div>}
+              {card.payload.example && (
+                <div dir={dir} lang={props.language}>
+                  “{card.payload.example}”
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {error && <p className="error">{error}</p>}
 
       {!flipped ? (
         <button className="btn" onClick={() => setFlipped(true)}>
-          Show answer
+          {props.mode === "write" && !hasInk ? "Skip writing, show the word" : "Show answer"}
         </button>
       ) : (
         <div className="rate-row">

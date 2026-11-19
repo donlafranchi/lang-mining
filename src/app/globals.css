@@ -562,3 +562,23 @@ a.btn {
   font-size: 0.85rem;
   color: var(--muted);
 }
+
+/* The handwriting pad. touch-action none is what lets a finger write instead of scrolling the page. */
+.pad {
+  width: 100%;
+  display: block;
+  background: var(--surface);
+  color: var(--ink);
+  border: 2px dashed var(--line);
+  border-radius: 12px;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.pad-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
