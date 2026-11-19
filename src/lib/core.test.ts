@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CORE_SIZE, coreProgress, coreRanksFor, coreToPayload, coreWords, parseCore } from "./core";
+import { CORE_SIZE, coreBatch, coreProgress, coreRanksFor, coreToPayload, coreWords, parseCore } from "./core";
 import { deckKey } from "./deck-payload";
 
 describe("parseCore", () => {
@@ -62,5 +62,27 @@ describe.each(["es", "fa"] as const)("the %s list", (language) => {
   it("uses only known parts of speech", () => {
     const allowed = new Set(["noun", "verb", "adj", "adv", "prep", "pron", "conj", "det", "num", "interj"]);
     for (const w of words) expect(allowed.has(w.part_of_speech)).toBe(true);
+  });
+});
+
+describe("coreBatch", () => {
+  const words = parseCore("es", ["de\tprep\tof\nla\tdet\tthe\nser\tverb\tto be\ncasa\tnoun\thouse\nperro\tnoun\tdog\ngrande\tadj\tbig"]);
+
+  it("skips words already in the deck and, by default, function words like prepositions", () => {
+    const b = coreBatch(words, new Set([deckKey("ser")]), { size: 2 });
+    expect(b.words.map((w) => w.lemma)).toEqual(["casa", "perro"]);
+    expect(b.nextStart).toBe(6);
+  });
+
+  it("can include every kind of word", () => {
+    const b = coreBatch(words, new Set(), { size: 2, contentOnly: false });
+    expect(b.words.map((w) => w.lemma)).toEqual(["de", "la"]);
+    expect(b.nextStart).toBe(3);
+  });
+
+  it("starts from a rank, and has no next batch at the end of the list", () => {
+    const b = coreBatch(words, new Set(), { start: 5, size: 20 });
+    expect(b.words.map((w) => w.lemma)).toEqual(["perro", "grande"]);
+    expect(b.nextStart).toBeNull();
   });
 });

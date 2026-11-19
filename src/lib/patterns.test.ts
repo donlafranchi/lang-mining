@@ -50,3 +50,18 @@ describe("lessonPatterns", () => {
     expect(lessonPatterns([{ patterns: [{ id: "made_up", quote: "x" }] }, {}])).toEqual([]);
   });
 });
+
+import { exampleFor } from "./patterns";
+
+describe("exampleFor", () => {
+  it("shows one short literal example, matched to the words in the text", () => {
+    const hace = patternById("hace_time")!;
+    expect(exampleFor(hace, "hace dos años")).toEqual({ text: "hace dos años", english: "2 years ago" });
+    expect(exampleFor(hace, "hace una hora").english).toBe("1 hour ago");
+    expect(exampleFor(hace).text).toBe("hace dos años");
+  });
+  it("falls back to the first full example when a pattern has no short ones", () => {
+    const p = patternById("present_perfect")!;
+    expect(exampleFor(p, "ha dado")).toEqual(p.examples[0]);
+  });
+});

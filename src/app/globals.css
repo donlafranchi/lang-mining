@@ -552,10 +552,10 @@ a.btn {
 
 /* Words that are among the 2,000 most common, underlined in the reader. */
 .core-word {
-  text-decoration: underline;
-  text-decoration-color: var(--accent);
-  text-decoration-thickness: 2px;
-  text-underline-offset: 4px;
+  text-decoration: underline dotted;
+  text-decoration-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
 }
 
 .field-label {
@@ -595,4 +595,63 @@ a.btn {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+button.mark {
+  font: inherit;
+  border: 0;
+  cursor: pointer;
+}
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.sheet {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 20px 20px 0 0;
+  padding: 28px 24px calc(32px + env(safe-area-inset-bottom));
+}
+.sheet-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 22px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+.sheet-body {
+  display: grid;
+  gap: 18px;
+}
+.sheet-heading {
+  justify-self: start;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-right: 44px;
+  padding: 0.25em 0.8em;
+}
+.sheet-example {
+  font-size: 1.6rem;
+  line-height: 1.3;
+}
+.sheet-english {
+  font-size: 1.15rem;
+  color: var(--muted);
 }

@@ -86,3 +86,28 @@ export function coreToPayload(w: CoreWord): DeckPayload {
   if (w.transliteration) payload.transliteration = w.transliteration;
   return payload;
 }
+
+/** Words worth learning first: nouns, verbs, adjectives and adverbs. Prepositions, articles and pronouns come along anyway. */
+const CONTENT_POS = new Set(["noun", "verb", "adj", "adv", "num"]);
+
+export type CoreBatch = {
+  words: CoreWord[];
+  /** The rank to start the following batch from, or null when this one reaches the end of the list. */
+  nextStart: number | null;
+};
+
+/**
+ * The next few core words to offer, from a rank onward, skipping words already in the deck. Content words only by
+ * default, so the first screen is not twenty prepositions. `nextStart` lets the learner skip a batch without adding it.
+ */
+export function coreBatch(
+  words: CoreWord[],
+  deckKeys: Set<string>,
+  options: { start?: number; size?: number; contentOnly?: boolean } = {},
+): CoreBatch {
+  const { start = 1, size = 20, contentOnly = true } = options;
+  const candidates = words.filter((w) => w.rank >= start && !deckKeys.has(deckKey(w.lemma)) && (!contentOnly || CONTENT_POS.has(w.part_of_speech)));
+  const batch = candidates.slice(0, size);
+  const nextStart = candidates.length > size ? batch[batch.length - 1].rank + 1 : null;
+  return { words: batch, nextStart };
+}

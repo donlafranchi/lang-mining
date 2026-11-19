@@ -1,12 +1,12 @@
 "use client";
 
 import { orderedConjugation } from "@/lib/conjugation-order";
-import Link from "next/link";
 import { allIdioms, allVerbs, allVocab, keyWords } from "@/lib/enrichment/flatten";
 import type { Enrichment, Idiom, ReflexiveKind, Verb, Vocab } from "@/lib/enrichment/schema";
-import { lessonPatterns, patternById, patternKind } from "@/lib/patterns";
+import { lessonPatterns, patternById } from "@/lib/patterns";
 import { HighlightedText } from "./HighlightedText";
 import { KnownPatterns } from "./PatternCard";
+import { NewPatternChips } from "./PatternSheet";
 import { Pager } from "./Pager";
 import { SaveAllButton } from "./SaveAllButton";
 import { SaveWordButton } from "./SaveWordButton";
@@ -65,7 +65,7 @@ function Reader({
   const pages = e.paragraphs.map((p, i) => {
     // Only patterns this person has not been shown are highlighted, so a known one never nags.
     const fresh = (p.patterns ?? []).filter((u) => patternById(u.id) && !seenPatterns.includes(u.id));
-    const freshIds = [...new Set(fresh.map((u) => u.id))];
+    const freshUses = fresh.filter((u, k) => fresh.findIndex((x) => x.id === u.id) === k);
     return (
       <div key={i} className="stack">
         <div className="card para-es">
@@ -84,16 +84,7 @@ function Reader({
             <VerbList items={p.verbs} />
           </div>
         )}
-        {freshIds.length > 0 && (
-          <div className="new-patterns">
-            <span className="section-label">New to you</span>
-            {freshIds.map((id) => (
-              <Link key={id} href={`/study/patterns?language=es#${id}`} className={`mark mark-${patternKind(id)}`}>
-                {patternById(id)!.title.replace(/ \(.*\)$/, "")}
-              </Link>
-            ))}
-          </div>
-        )}
+        <NewPatternChips uses={freshUses} language="es" />
         {p.idioms.length > 0 && (
           <div className="stack">
             <div className="section-label">Idioms</div>
