@@ -517,3 +517,39 @@ describe("enrichText finds Spanish grammar patterns by rules when the analysis s
     expect(complete.mock.calls[0][0].system).toMatch(/The patterns are:/);
   });
 });
+
+describe("enrichText builds verb tables in code when the analysis service can conjugate", () => {
+  const text = "Ella ha dado un regalo muy bonito a su madre en la ciudad grande.";
+  const tok = (t: string, start: number, lemma: string, pos: string, morph: string) => ({ text: t, start, end: start + t.length, lemma, pos, morph, is_word: true });
+  const analysis = [
+    tok("Ella", 0, "ella", "pron", ""),
+    tok("ha", 5, "haber", "aux", "Mood=Ind Number=Sing Person=3 Tense=Pres VerbForm=Fin"),
+    tok("dado", 8, "dar", "verb", "Tense=Past VerbForm=Part"),
+  ];
+  const setup = async () => {
+    const m = (await import("../../test-support/memory-lexicon")).memoryStore();
+    await m.store.upsertLemmas([
+      { language: "es", lemma: "dar", lemma_key: "dar", pos: "verb", transliteration: null, level: null, core_rank: 60, senses: [{ english: "to give", count: 1 }], source: "core", uses: 0 },
+    ]);
+    return m;
+  };
+  const conj = { lemma: "dar", irregular: true, mood: "indicativo", tense: "presente", table: { yo: "doy", tú: "das" } };
+
+  it("puts the code-built verb first, leaves it out of the model's request, and keeps the model's other verbs", async () => {
+    const m = await setup();
+    const analyzer = { analyze: async () => [{ tokens: analysis }], conjugate: vi.fn(async () => [conj]) };
+    const complete = vi.fn(fakeModel());
+    const lesson = (await enrichText({ text, help: "light", complete, analyzer, lexicon: m.store })) as Enrichment;
+    expect(analyzer.conjugate).toHaveBeenCalledWith("es", [{ lemma: "dar", morph: "Tense=Past VerbForm=Part" }]);
+    expect(lesson.paragraphs[0].verbs[0]).toMatchObject({ infinitive: "dar", form_in_source: "dado", form_english: "past participle of dar (to give)", conjugation_table: { yo: "doy", tú: "das" } });
+    expect(complete.mock.calls[0][0].messages[0].content).toMatch(/Verb forms the app already explains.*dado/);
+  });
+
+  it("asks the model for verbs as before when the conjugator fails", async () => {
+    const m = await setup();
+    const analyzer = { analyze: async () => [{ tokens: analysis }], conjugate: async () => { throw new Error("down"); } };
+    const complete = vi.fn(fakeModel());
+    await enrichText({ text, help: "light", complete, analyzer, lexicon: m.store });
+    expect(complete.mock.calls[0][0].messages[0].content).not.toMatch(/Verb forms the app already explains/);
+  });
+});
