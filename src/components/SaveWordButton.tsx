@@ -7,7 +7,7 @@ import type { Language } from "@/lib/languages";
 type Word = Parameters<typeof toDeckPayload>[0];
 
 /** Saves a vocab entry to the deck. Saving the same word again is harmless. */
-export function SaveWordButton(props: { word: Word; language: Language; sessionId: string }) {
+export function SaveWordButton(props: { word: Word; language: Language; sessionId: string; compact?: boolean }) {
   const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
   const [error, setError] = useState("");
 
@@ -35,6 +35,20 @@ export function SaveWordButton(props: { word: Word; language: Language; sessionI
       setError("Could not reach the server. Check your connection and try again.");
       setState("idle");
     }
+  }
+
+  if (props.compact) {
+    return (
+      <button
+        className="row-delete"
+        onClick={save}
+        disabled={state !== "idle"}
+        aria-label={state === "saved" ? "Saved to deck" : "Save to deck"}
+        title={error || (state === "saved" ? "Saved to deck" : "Save to deck")}
+      >
+        {state === "saved" ? "✓" : state === "saving" ? "…" : error ? "!" : "＋"}
+      </button>
+    );
   }
 
   return (

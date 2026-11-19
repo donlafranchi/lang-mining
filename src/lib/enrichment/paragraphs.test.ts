@@ -7,6 +7,7 @@ import {
   MIN_PARAGRAPH_CHARS,
   splitParagraphs,
 } from "./paragraphs";
+import { batchLimits } from "../help";
 
 const para = (label: string, n = 120) => `${label} `.repeat(Math.ceil(n / (label.length + 1))).trim();
 
@@ -60,6 +61,18 @@ describe("splitParagraphs", () => {
     expect(out.join(" ")).toBe(long);
   });
 
+  it("splits a long Persian paragraph at the Persian question mark", () => {
+    const question = `${para("سلام", 300)}؟`;
+    const long = Array.from({ length: 6 }, () => question).join(" ");
+    const out = splitParagraphs(long);
+    expect(out.length).toBeGreaterThan(1);
+    for (const p of out) {
+      expect(p.length).toBeLessThanOrEqual(MAX_PARAGRAPH_CHARS);
+      expect(p.endsWith("؟")).toBe(true);
+    }
+    expect(out.join(" ")).toBe(long);
+  });
+
   it("cuts a huge unpunctuated run at spaces", () => {
     const run = para("sinpuntos", 3000);
     const out = splitParagraphs(run);
@@ -104,6 +117,19 @@ describe("batchParagraphs", () => {
     const batches = batchParagraphs([big, big, big, big]);
     expect(batches.every((b) => b.length >= 1)).toBe(true);
     expect(batches.length).toBeGreaterThan(1);
+  });
+
+  it("uses smaller batches when given tighter limits", () => {
+    const paragraphs = Array.from({ length: 6 }, (_, i) => `Párrafo ${i + 1} ${para("x", 100)}`);
+    const batches = batchParagraphs(paragraphs, batchLimits("fa", "full"));
+    for (const b of batches) expect(b.length).toBeLessThanOrEqual(2);
+    expect(batches.length).toBe(3);
+    expect(batches.flat().map((b) => b.n)).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
+  it("keeps the Spanish default when no limits are given", () => {
+    const paragraphs = Array.from({ length: 6 }, (_, i) => `Párrafo ${i + 1} ${para("x", 100)}`);
+    expect(batchParagraphs(paragraphs).length).toBe(batchParagraphs(paragraphs, batchLimits("es", "full")).length);
   });
 
   it("returns no batches for no paragraphs", () => {

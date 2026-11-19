@@ -1,142 +1,197 @@
 import { describe, expect, it } from "vitest";
-import { parseFarsiEnrichment } from "./farsi-schema";
+import { farsiEnrichmentSchema, mergeFarsiBatches, parseFarsiBatch, parseFarsiEnrichment } from "./farsi-schema";
 
-const valid = {
-  summary: "A short chat about the weekend.",
-  segments: [{ persian: "فردا می‌بینمت.", transliteration: "fardâ mibinamet.", english: "I'll see you tomorrow." }],
-  vocab: [
-    {
-      lemma: "فردا",
-      transliteration: "fardâ",
-      part_of_speech: "adverb",
-      english: "tomorrow",
-      example_fragment: "فردا می‌بینمت",
-      level: "A1",
-      register: "neutral",
-    },
-  ],
-  idioms: [
-    {
-      phrase: "دست به کار شدن",
-      transliteration: "dast be kâr shodan",
-      literal_meaning: "to become hand to work",
-      actual_meaning: "to get to work",
-      register: "neutral",
-    },
-  ],
-  verbs: [
-    {
-      infinitive: "دیدن",
-      transliteration: "didan",
-      english: "to see",
-      form_in_source: "می‌بینمت",
-      form_transliteration: "mibinamet",
-      form_english: "I see you",
-      tense: "present",
-      mood: "indicative",
-      person: "1sg",
-      conjugation_table: { "من": "می‌بینم", "تو": "می‌بینی", "او": "می‌بیند" },
-      irregular: true,
-      compound: null,
-    },
-    {
-      infinitive: "کار کردن",
-      transliteration: "kâr kardan",
-      english: "to work",
-      form_in_source: "کار می‌کنم",
-      form_transliteration: "kâr mikonam",
-      form_english: "I work",
-      tense: "present",
-      mood: "indicative",
-      person: "1sg",
-      conjugation_table: { "من": "کار می‌کنم" },
-      irregular: true,
-      compound: {
-        parts: "kâr (work) + kardan (to do)",
-        explanation: "A noun plus the light verb kardan makes a verb. Only kardan changes with tense and person.",
-      },
-    },
-  ],
-  grammar_notes: ["The -et ending is the attached pronoun 'you'."],
+const word = (lemma = "فردا") => ({
+  lemma,
+  surface: lemma,
+  transliteration: "fardâ",
+  part_of_speech: "adverb",
+  english: "tomorrow",
+  level: "A1",
+  register: "neutral",
+});
+
+const verb = {
+  infinitive: "دیدن",
+  transliteration: "didan",
+  english: "to see",
+  form_in_source: "می‌بینمت",
+  form_transliteration: "mibinamet",
+  form_english: "I see you",
+  tense: "present",
+  mood: "indicative",
+  person: "1sg",
+  conjugation_table: { "من": "می‌بینم", "تو": "می‌بینی" },
+  irregular: true,
+  compound: null,
 };
 
-describe("parseFarsiEnrichment", () => {
-  it("accepts a valid Farsi enrichment and defaults quiz to empty", () => {
-    const result = parseFarsiEnrichment(JSON.stringify(valid));
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.data.quiz).toEqual([]);
+const compoundVerb = {
+  ...verb,
+  infinitive: "کار کردن",
+  transliteration: "kâr kardan",
+  english: "to work",
+  compound: { parts: "kâr (work) + kardan (to do)", explanation: "A noun plus the light verb kardan makes a verb." },
+};
+
+const idiom = {
+  phrase: "دست به کار شدن",
+  transliteration: "dast be kâr shodan",
+  literal_meaning: "to become hand to work",
+  actual_meaning: "to get to work",
+  register: "neutral",
+};
+
+const paragraphResult = (n: number) => ({
+  n,
+  transliteration: `transliteration of paragraph ${n}`,
+  english: `English for paragraph ${n}.`,
+  key_phrase: { persian: "فردا می‌بینمت", transliteration: "fardâ mibinamet", english: "I'll see you tomorrow" },
+  words: structuredClone([word("فردا"), word("دیدن")]),
+  verbs: structuredClone([verb, compoundVerb]),
+  idioms: structuredClone([idiom]),
+});
+
+const batch = (numbers: number[]) => ({
+  gist: `Gist of ${numbers.join(" and ")}.`,
+  paragraphs: numbers.map(paragraphResult),
+  grammar_notes: ["The -et ending is the attached pronoun 'you'."],
+});
+
+describe("parseFarsiBatch", () => {
+  it("accepts a batch covering exactly the numbers sent, in any order", () => {
+    expect(parseFarsiBatch(JSON.stringify(batch([1, 2])), [1, 2]).ok).toBe(true);
+    expect(parseFarsiBatch(JSON.stringify(batch([2, 1])), [1, 2]).ok).toBe(true);
   });
 
-  it("strips a markdown fence around the JSON", () => {
-    expect(parseFarsiEnrichment("```json\n" + JSON.stringify(valid) + "\n```").ok).toBe(true);
+  it("strips a markdown fence and finds JSON inside other text", () => {
+    const json = JSON.stringify(batch([1]));
+    expect(parseFarsiBatch("```json\n" + json + "\n```", [1]).ok).toBe(true);
+    expect(parseFarsiBatch(`Here you go:\n${json}\nDone.`, [1]).ok).toBe(true);
   });
 
   it("rejects non-JSON", () => {
-    const result = parseFarsiEnrichment("not json");
-    expect(result.ok).toBe(false);
+    expect(parseFarsiBatch("not json", [1]).ok).toBe(false);
   });
 
-  it.each([
-    ["vocab", "transliteration"],
-    ["vocab", "english"],
-    ["vocab", "register"],
-    ["segments", "transliteration"],
-    ["segments", "english"],
-    ["verbs", "transliteration"],
-    ["verbs", "form_transliteration"],
-    ["verbs", "form_english"],
-    ["verbs", "english"],
-    ["verbs", "compound"],
-    ["idioms", "transliteration"],
-  ] as const)("rejects %s entries missing %s", (list, key) => {
-    const bad = structuredClone(valid) as unknown as Record<string, Record<string, unknown>[]>;
-    delete bad[list][0][key];
-    expect(parseFarsiEnrichment(JSON.stringify(bad)).ok).toBe(false);
+  it("rejects a skipped, invented or repeated paragraph", () => {
+    expect(parseFarsiBatch(JSON.stringify(batch([1])), [1, 2]).ok).toBe(false);
+    expect(parseFarsiBatch(JSON.stringify(batch([1, 2, 3])), [1, 2]).ok).toBe(false);
+    expect(parseFarsiBatch(JSON.stringify(batch([1, 1])), [1, 2]).ok).toBe(false);
   });
 
-  it("rejects an unknown register", () => {
-    const bad = structuredClone(valid);
-    bad.vocab[0].register = "street";
-    expect(parseFarsiEnrichment(JSON.stringify(bad)).ok).toBe(false);
+  it("allows a paragraph with no words, verbs or idioms", () => {
+    const empty = batch([1]);
+    empty.paragraphs[0].words = [];
+    empty.paragraphs[0].verbs = [];
+    empty.paragraphs[0].idioms = [];
+    expect(parseFarsiBatch(JSON.stringify(empty), [1]).ok).toBe(true);
   });
+
+  it.each(["transliteration", "english", "key_phrase", "words"] as const)("rejects a paragraph missing %s", (key) => {
+    const bad = batch([1]) as unknown as { paragraphs: Record<string, unknown>[] };
+    delete bad.paragraphs[0][key];
+    expect(parseFarsiBatch(JSON.stringify(bad), [1]).ok).toBe(false);
+  });
+
+  it.each(["lemma", "surface", "transliteration", "english", "part_of_speech", "level", "register"] as const)(
+    "rejects a word missing %s",
+    (key) => {
+      const bad = batch([1]) as unknown as { paragraphs: { words: Record<string, unknown>[] }[] };
+      delete bad.paragraphs[0].words[0][key];
+      expect(parseFarsiBatch(JSON.stringify(bad), [1]).ok).toBe(false);
+    },
+  );
+
+  it("rejects an unknown level or register", () => {
+    const level = batch([1]);
+    level.paragraphs[0].words[0].level = "Z9";
+    expect(parseFarsiBatch(JSON.stringify(level), [1]).ok).toBe(false);
+    const register = batch([1]);
+    register.paragraphs[0].words[0].register = "street";
+    expect(parseFarsiBatch(JSON.stringify(register), [1]).ok).toBe(false);
+  });
+
+  it.each(["transliteration", "form_transliteration", "form_english", "english", "compound"] as const)(
+    "rejects a verb missing %s",
+    (key) => {
+      const bad = batch([1]) as unknown as { paragraphs: { verbs: Record<string, unknown>[] }[] };
+      delete bad.paragraphs[0].verbs[0][key];
+      expect(parseFarsiBatch(JSON.stringify(bad), [1]).ok).toBe(false);
+    },
+  );
 
   it("accepts compound parts as a list and joins them into one string", () => {
-    const listed = structuredClone(valid) as unknown as { verbs: { compound: { parts: unknown } }[] };
-    listed.verbs[1].compound.parts = ["kâr (work)", "kardan (to do)"];
-    const result = parseFarsiEnrichment(JSON.stringify(listed));
+    const listed = batch([1]) as unknown as { paragraphs: { verbs: { compound: { parts: unknown } }[] }[] };
+    listed.paragraphs[0].verbs[1].compound.parts = ["kâr (work)", "kardan (to do)"];
+    const result = parseFarsiBatch(JSON.stringify(listed), [1]);
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.data.verbs[1].compound?.parts).toBe("kâr (work) + kardan (to do)");
+    if (result.ok) expect(result.data.paragraphs[0].verbs[1].compound?.parts).toBe("kâr (work) + kardan (to do)");
   });
 
-  it("keeps compound parts given as a string unchanged", () => {
-    const result = parseFarsiEnrichment(JSON.stringify(valid));
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.data.verbs[1].compound?.parts).toBe("kâr (work) + kardan (to do)");
+  it("rejects bad compound parts and an idiom missing its transliteration", () => {
+    const bad = batch([1]) as unknown as { paragraphs: { verbs: { compound: { parts: unknown } }[]; idioms: Record<string, unknown>[] }[] };
+    bad.paragraphs[0].verbs[1].compound.parts = [];
+    expect(parseFarsiBatch(JSON.stringify(bad), [1]).ok).toBe(false);
+    const idiomBad = batch([1]) as unknown as { paragraphs: { idioms: Record<string, unknown>[] }[] };
+    delete idiomBad.paragraphs[0].idioms[0].transliteration;
+    expect(parseFarsiBatch(JSON.stringify(idiomBad), [1]).ok).toBe(false);
   });
 
-  it.each([[[]], [[""]], [["ok", ""]], [[1, 2]], [42], [null]])("rejects compound parts %j", (parts) => {
-    const bad = structuredClone(valid) as unknown as { verbs: { compound: { parts: unknown } }[] };
-    bad.verbs[1].compound.parts = parts;
-    expect(parseFarsiEnrichment(JSON.stringify(bad)).ok).toBe(false);
+  it("allows many words per paragraph, since full help glosses every word", () => {
+    const big = batch([1]);
+    big.paragraphs[0].words = Array.from({ length: 50 }, (_, i) => word(`کلمه${i}`));
+    expect(parseFarsiBatch(JSON.stringify(big), [1]).ok).toBe(true);
+  });
+});
+
+describe("mergeFarsiBatches", () => {
+  const source = ["پاراگراف اول.", "پاراگراف دوم.", "پاراگراف سوم."];
+
+  it("attaches the source Persian to each paragraph in order and drops the number", () => {
+    const b1 = parseFarsiBatch(JSON.stringify(batch([2, 1])), [1, 2]);
+    const b2 = parseFarsiBatch(JSON.stringify(batch([3])), [3]);
+    if (!b1.ok || !b2.ok) throw new Error("fixture invalid");
+    const lesson = mergeFarsiBatches(source, [b1.data, b2.data]);
+    expect(lesson.paragraphs.map((p) => p.persian)).toEqual(source);
+    expect(lesson.paragraphs.map((p) => p.english)).toEqual([
+      "English for paragraph 1.",
+      "English for paragraph 2.",
+      "English for paragraph 3.",
+    ]);
+    expect(lesson.paragraphs[0]).not.toHaveProperty("n");
   });
 
-  it("rejects a compound block with no explanation", () => {
-    const bad = structuredClone(valid);
-    (bad.verbs[1].compound as { explanation: string }).explanation = "";
-    expect(parseFarsiEnrichment(JSON.stringify(bad)).ok).toBe(false);
+  it("joins the gists and dedupes and caps grammar notes", () => {
+    const b1 = parseFarsiBatch(JSON.stringify(batch([1, 2])), [1, 2]);
+    const b2 = parseFarsiBatch(JSON.stringify(batch([3])), [3]);
+    if (!b1.ok || !b2.ok) throw new Error("fixture invalid");
+    const lesson = mergeFarsiBatches(source, [b1.data, b2.data]);
+    expect(lesson.summary).toBe("Gist of 1 and 2. Gist of 3.");
+    expect(lesson.grammar_notes).toEqual(["The -et ending is the attached pronoun 'you'."]);
+
+    const many = { ...batch([1]), grammar_notes: Array.from({ length: 10 }, (_, i) => `Note ${i}`) };
+    const parsed = parseFarsiBatch(JSON.stringify(many), [1]);
+    if (!parsed.ok) throw new Error("fixture invalid");
+    expect(mergeFarsiBatches([source[0]], [parsed.data]).grammar_notes).toHaveLength(6);
   });
 
-  it("enforces the short-fragment rule", () => {
-    const bad = structuredClone(valid);
-    bad.vocab[0].example_fragment = "کلمه ".repeat(60);
-    expect(parseFarsiEnrichment(JSON.stringify(bad)).ok).toBe(false);
-    const bad2 = structuredClone(valid);
-    bad2.segments[0].persian = "جمله ".repeat(60);
-    expect(parseFarsiEnrichment(JSON.stringify(bad2)).ok).toBe(false);
+  it("throws if a paragraph has no result", () => {
+    const b1 = parseFarsiBatch(JSON.stringify(batch([1])), [1]);
+    if (!b1.ok) throw new Error("fixture invalid");
+    expect(() => mergeFarsiBatches(source, [b1.data])).toThrow(/Paragraph 2/);
   });
 
-  it("does not accept a Spanish-shaped response", () => {
-    const spanish = { summary: "x", segments: [{ spanish: "Hola.", english: "Hello." }], vocab: [], idioms: [], verbs: [] };
-    expect(parseFarsiEnrichment(JSON.stringify(spanish)).ok).toBe(false);
+  it("produces a lesson the stored schema accepts", () => {
+    const b1 = parseFarsiBatch(JSON.stringify(batch([1, 2, 3])), [1, 2, 3]);
+    if (!b1.ok) throw new Error("fixture invalid");
+    const lesson = mergeFarsiBatches(source, [b1.data]);
+    expect(farsiEnrichmentSchema.safeParse(lesson).success).toBe(true);
+    expect(parseFarsiEnrichment(JSON.stringify(lesson)).ok).toBe(true);
+  });
+
+  it("rejects the old single-call Farsi lesson shape", () => {
+    const old = { summary: "x", segments: [], vocab: [], idioms: [], verbs: [] };
+    expect(parseFarsiEnrichment(JSON.stringify(old)).ok).toBe(false);
   });
 });

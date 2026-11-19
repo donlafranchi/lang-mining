@@ -169,22 +169,28 @@ export function parseEnrichment(raw: string): ParseResult {
   return parseWith(enrichmentSchema, raw);
 }
 
+/** The paragraph numbers a batch answer returned must be exactly the ones sent, each once. Returns the problem, or null. */
+export function coverageError(got: number[], expected: number[]): string | null {
+  const want = [...expected].sort((a, b) => a - b);
+  const sorted = [...got].sort((a, b) => a - b);
+  if (new Set(got).size !== got.length) {
+    return `Paragraph numbers repeat. Return each of ${want.join(", ")} exactly once.`;
+  }
+  if (sorted.length !== want.length || sorted.some((n, i) => n !== want[i])) {
+    return `Wrong paragraphs. Expected exactly ${want.join(", ")}, got ${sorted.join(", ") || "none"}.`;
+  }
+  return null;
+}
+
 /** Parse one batch response. It must cover exactly the paragraph numbers that were sent, each once. */
 export function parseBatch(raw: string, expected: number[]): ParseResult<BatchResult> {
   const result = parseWith(batchResultSchema, raw);
   if (!result.ok) return result;
-
-  const got = result.data.paragraphs.map((p) => p.n);
-  const want = [...expected].sort((a, b) => a - b);
-  const sorted = [...got].sort((a, b) => a - b);
-  const unique = new Set(got);
-  if (unique.size !== got.length) {
-    return { ok: false, error: `Paragraph numbers repeat. Return each of ${want.join(", ")} exactly once.` };
-  }
-  if (sorted.length !== want.length || sorted.some((n, i) => n !== want[i])) {
-    return { ok: false, error: `Wrong paragraphs. Expected exactly ${want.join(", ")}, got ${sorted.join(", ") || "none"}.` };
-  }
-  return result;
+  const problem = coverageError(
+    result.data.paragraphs.map((p) => p.n),
+    expected,
+  );
+  return problem ? { ok: false, error: problem } : result;
 }
 
 const MAX_GRAMMAR_NOTES = 6;
@@ -202,15 +208,17 @@ export function mergeBatches(paragraphs: string[], batches: BatchResult[]): Enri
     return { spanish, ...rest };
   });
 
+  return { ...joinBatchNotes(batches), paragraphs: merged, quiz: [] };
+}
+
+/** The lesson summary (the batch gists joined) and the grammar notes (deduped, capped). Shared by both languages. */
+export function joinBatchNotes(batches: { gist: string; grammar_notes: string[] }[]): {
+  summary: string;
+  grammar_notes: string[];
+} {
   const notes: string[] = [];
   for (const batch of batches) {
     for (const note of batch.grammar_notes) if (!notes.includes(note)) notes.push(note);
   }
-
-  return {
-    summary: batches.map((b) => b.gist.trim()).join(" "),
-    paragraphs: merged,
-    grammar_notes: notes.slice(0, MAX_GRAMMAR_NOTES),
-    quiz: [],
-  };
+  return { summary: batches.map((b) => b.gist.trim()).join(" "), grammar_notes: notes.slice(0, MAX_GRAMMAR_NOTES) };
 }

@@ -1,5 +1,5 @@
+import type { HelpLevel } from "../help";
 import type { Language } from "../languages";
-import { MAX_FRAGMENT_CHARS } from "./schema";
 
 function buildSpanishPrompt(): string {
   return `You are a Spanish language teacher mining numbered paragraphs of a source text for a personal study session. Read it as general Latin American Spanish and flag region-specific words when they appear. Second person is tú/ustedes.
@@ -30,33 +30,46 @@ Rules:
 - If a paragraph is not Spanish, still return its entry with an English translation and empty lists.`;
 }
 
-function buildFarsiPrompt(): string {
-  return `You are a Persian (Farsi) language teacher mining a piece of source text for a personal study session. The learner is an English speaker who may not read the script well. Use standard Iranian Persian only.
+const FARSI_WORDS_RULE: Record<HelpLevel, string> = {
+  full: "an entry for EVERY distinct word in the paragraph, including small words like و (and), در (in), به (to) and که (that), so the learner can see what each word means. List them in the order they first appear and give each word once per paragraph",
+  medium:
+    "an entry for every distinct content word (nouns, verbs, adjectives, adverbs and pronouns). Skip the most basic small words such as و, در, به, از, که and را. List them in the order they first appear and give each word once per paragraph",
+  light: "up to 8 of the most useful words for a learner",
+};
 
-Return ONLY JSON, no prose before or after, no markdown fence. The JSON must have exactly these keys:
-- summary: 2 to 3 sentence gist in English
-- segments: up to 6 notable sentences, each { persian, transliteration, english }
-- vocab: the most useful 10 to 15 words, each { lemma (Persian script), transliteration, part_of_speech, english, example_fragment (Persian script), level (A1, A2, B1, B2, C1 or C2), register (formal, neutral or colloquial) }
-- idioms: up to 5 idioms or fixed expressions, each { phrase (Persian script), transliteration, literal_meaning, actual_meaning, register (formal, neutral or colloquial) }
-- verbs: up to 6 notable conjugated verbs, each { infinitive (Persian script), transliteration, english (the plain English meaning of the infinitive, for example "to see"), form_in_source, form_transliteration, form_english (what the form means as used in the source), tense, mood, person, conjugation_table (object mapping pronoun to form for that tense, in Persian script), irregular (boolean), compound }
-- grammar_notes: up to 3 short notes on notable constructions, such as the ezafe or attached pronouns
-- quiz: []
+const FARSI_VERBS_RULE: Record<HelpLevel, string> = {
+  full: "every conjugated verb, up to 8",
+  medium: "up to 5 notable conjugated verbs",
+  light: "up to 3 notable conjugated verbs",
+};
+
+function buildFarsiPrompt(help: HelpLevel): string {
+  return `You are a Persian (Farsi) language teacher mining numbered paragraphs of a source text for a personal study session. The learner is an English speaker who cannot read the script well and knows very few Persian words, so be generous. Use standard Iranian Persian only.
+
+The user message lists paragraphs as [1], [2] and so on. Return ONLY JSON, no prose before or after, no markdown fence. The JSON must have exactly these keys:
+- gist: one sentence in English saying what these paragraphs are about
+- paragraphs: one entry for EVERY paragraph number you were given, each exactly once, each { n (the paragraph number), transliteration (the whole paragraph in Latin letters, one consistent system with â for the long a, written the way it is said), english (a faithful English translation of the whole paragraph), key_phrase { persian, transliteration, english } (the single most useful phrase or construction in the paragraph, quoted exactly), words, verbs, idioms }
+- grammar_notes: up to 2 short notes on notable constructions across these paragraphs, such as the ezafe or attached pronouns
+
+Per paragraph:
+- words: ${FARSI_WORDS_RULE[help]}, each { lemma (dictionary form, Persian script), surface (the form as written in the paragraph, Persian script), transliteration, part_of_speech, english, level (A1, A2, B1, B2, C1 or C2), register (formal, neutral or colloquial) }
+- verbs: ${FARSI_VERBS_RULE[help]}, each { infinitive (Persian script), transliteration, english (the plain English meaning of the infinitive, for example "to see"), form_in_source, form_transliteration, form_english (what the form means as used in the source), tense, mood, person, conjugation_table (object mapping pronoun to form for that tense, in Persian script), irregular (boolean), compound }
+- idioms: up to 2 idioms or fixed expressions, each { phrase (Persian script), transliteration, literal_meaning, actual_meaning, register (formal, neutral or colloquial) }. Use an empty array when there are none.
+
+Compound verbs: the compound key is required on every verb. Use null for a simple verb. When the verb is a noun or adjective plus a light verb (for example kâr kardan, "to work"), set it to { parts (one string with the pieces and their meanings, for example "kâr (work) + kardan (to do)"), explanation (one or two plain sentences for an English speaker) }.
 
 Rules:
-- Every Persian word or sentence needs a Latin transliteration, using one consistent system with â for the long a, and an English meaning.
-- Compound verbs: the compound key is required on every verb. Use null for a simple verb. When the verb is a noun or adjective plus a light verb (for example kâr kardan, "to work"), set it to { parts (one string with the pieces and their meanings, for example "kâr (work) + kardan (to do)"), explanation (one or two plain sentences for an English speaker) }.
+- Do not copy the Persian paragraphs back. They are attached by the app, so return only the transliteration, the English and the mined items.
+- Never skip a paragraph: every paragraph number gets an entry, even if its lists are empty.
+- Every Persian word or sentence needs a Latin transliteration and an English meaning.
 - Register: spoken Persian differs from written. Mark colloquial words and forms as colloquial and say so when a spoken form differs from the written one.
-- Never copy full lines or long passages from the source. Every example_fragment, segment, and phrase must be ${MAX_FRAGMENT_CHARS} characters or fewer. Quote only the shortest span that shows the word or construction in use.
 - Describe how the source is written, do not correct it.
-- If the source is not Persian, return empty vocab, idioms, and verbs and say so in the summary.`;
+- If a paragraph is not Persian, still return its entry with an English translation and empty lists.`;
 }
 
-export function buildSystemPrompt(language: Language = "es"): string {
-  return language === "fa" ? buildFarsiPrompt() : buildSpanishPrompt();
-}
-
-export function buildUserPrompt(text: string): string {
-  return `Source text to mine:\n\n${text}`;
+/** The system prompt for a language. Help level only changes Farsi, where it sets how many words get glossed. */
+export function buildSystemPrompt(language: Language = "es", help: HelpLevel = "full"): string {
+  return language === "fa" ? buildFarsiPrompt(help) : buildSpanishPrompt();
 }
 
 /** The numbered paragraphs for one Spanish batch. */

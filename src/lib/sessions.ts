@@ -4,6 +4,7 @@ import { enrichText, type Lesson } from "./enrichment/enrich";
 import { farsiEnrichmentSchema } from "./enrichment/farsi-schema";
 import { enrichmentSchema, type Dialect } from "./enrichment/schema";
 import { fetchArticleText, looksLikeUrl } from "./ingest/extract";
+import type { HelpLevel } from "./help";
 import { resolveLanguage, type Language } from "./languages";
 import type { ModelId } from "./models";
 import { db } from "./supabase";
@@ -122,9 +123,14 @@ export async function createSession(args: { input: string; language: Language })
 }
 
 /** Builds the lesson for a freshly created session. Never throws: failures are recorded on the row. */
-export async function buildSession(args: { id: string; text: string; language: Language; model: ModelId }): Promise<void> {
+export async function buildSession(args: { id: string; text: string; language: Language; help: HelpLevel; model: ModelId }): Promise<void> {
   try {
-    const enrichment = await enrichText({ text: args.text, language: args.language, complete: createAnthropicComplete(args.model) });
+    const enrichment = await enrichText({
+      text: args.text,
+      language: args.language,
+      help: args.help,
+      complete: createAnthropicComplete(args.model),
+    });
     await saveEnrichment(args.id, args.model, enrichment);
     await db().from("sessions").update({ status: "ready", error: null }).eq("id", args.id);
   } catch (err) {
@@ -152,9 +158,14 @@ export async function startRerun(id: string): Promise<{ text: string; language: 
 }
 
 /** Rebuilds the lesson from stored text, in the background. A failure is logged and the lesson stays as it was. */
-export async function finishRerun(args: { id: string; text: string; language: Language; model: ModelId }): Promise<void> {
+export async function finishRerun(args: { id: string; text: string; language: Language; help: HelpLevel; model: ModelId }): Promise<void> {
   try {
-    const enrichment = await enrichText({ text: args.text, language: args.language, complete: createAnthropicComplete(args.model) });
+    const enrichment = await enrichText({
+      text: args.text,
+      language: args.language,
+      help: args.help,
+      complete: createAnthropicComplete(args.model),
+    });
     await saveEnrichment(args.id, args.model, enrichment);
     await db().from("sessions").update({ status: "ready", error: null }).eq("id", args.id);
   } catch (err) {

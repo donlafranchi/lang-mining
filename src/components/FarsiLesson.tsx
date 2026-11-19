@@ -1,4 +1,9 @@
-import type { FarsiEnrichment } from "@/lib/enrichment/farsi-schema";
+"use client";
+
+import { allFarsiIdioms, allFarsiVerbs, allFarsiWords } from "@/lib/enrichment/flatten";
+import type { FarsiEnrichment, FarsiIdiom, FarsiVerb, FarsiWord } from "@/lib/enrichment/farsi-schema";
+import { Pager } from "./Pager";
+import { SaveAllButton } from "./SaveAllButton";
 import { SaveWordButton } from "./SaveWordButton";
 
 export type FarsiTab = "read" | "vocab" | "idioms" | "verbs";
@@ -16,25 +21,69 @@ function Empty({ what }: { what: string }) {
 }
 
 export function FarsiLesson({ e, tab, sessionId }: { e: FarsiEnrichment; tab: FarsiTab; sessionId: string }) {
-  if (tab === "read") return <ReadTab e={e} />;
-  if (tab === "vocab") return <VocabTab e={e} sessionId={sessionId} />;
-  if (tab === "idioms") return <IdiomsTab e={e} />;
-  return <VerbsTab e={e} />;
+  if (tab === "read") return <Reader e={e} sessionId={sessionId} />;
+  if (tab === "vocab") {
+    const words = allFarsiWords(e);
+    return (
+      <div className="stack">
+        <SaveAllButton words={words} language="fa" sessionId={sessionId} />
+        <WordList items={words} sessionId={sessionId} />
+      </div>
+    );
+  }
+  if (tab === "idioms") return <IdiomList items={allFarsiIdioms(e)} />;
+  return <VerbList items={allFarsiVerbs(e)} />;
 }
 
-function ReadTab({ e }: { e: FarsiEnrichment }) {
+function Reader({ e, sessionId }: { e: FarsiEnrichment; sessionId: string }) {
+  const pages = e.paragraphs.map((p, i) => (
+    <div key={i} className="stack">
+      <div className="card stack">
+        <div className="para-fa">
+          <Fa>{p.persian}</Fa>
+        </div>
+        <div className="translit">{p.transliteration}</div>
+      </div>
+
+      <div className="card stack">
+        <div className="lead">Key phrase</div>
+        <div>
+          <Fa>{p.key_phrase.persian}</Fa>
+        </div>
+        <div className="translit">{p.key_phrase.transliteration}</div>
+        <div className="muted">{p.key_phrase.english}</div>
+      </div>
+
+      {p.words.length > 0 && (
+        <div className="stack">
+          <div className="section-label">Words ({p.words.length})</div>
+          <SaveAllButton words={p.words} language="fa" sessionId={sessionId} />
+          <WordList items={p.words} sessionId={sessionId} />
+        </div>
+      )}
+
+      {p.verbs.length > 0 && (
+        <div className="stack">
+          <div className="section-label">Verbs</div>
+          <VerbList items={p.verbs} />
+        </div>
+      )}
+
+      {p.idioms.length > 0 && (
+        <div className="stack">
+          <div className="section-label">Idioms</div>
+          <IdiomList items={p.idioms} />
+        </div>
+      )}
+
+      <div className="card para-en">{p.english}</div>
+    </div>
+  ));
+
   return (
     <div className="stack">
       <div className="card">{e.summary}</div>
-      {e.segments.map((s, i) => (
-        <div key={i} className="card segment">
-          <div className="es">
-            <Fa>{s.persian}</Fa>
-          </div>
-          <div className="translit">{s.transliteration}</div>
-          <div className="en">{s.english}</div>
-        </div>
-      ))}
+      <Pager pages={pages} label="Paragraph" />
       {e.grammar_notes.length > 0 && (
         <div className="card stack">
           <div className="lead">Grammar notes</div>
@@ -47,42 +96,43 @@ function ReadTab({ e }: { e: FarsiEnrichment }) {
   );
 }
 
-function VocabTab({ e, sessionId }: { e: FarsiEnrichment; sessionId: string }) {
-  if (e.vocab.length === 0) return <Empty what="vocabulary" />;
+/** One line per word so a long list is quick to scan: script, how to say it, what it means. */
+function WordList({ items, sessionId }: { items: FarsiWord[]; sessionId: string }) {
+  if (items.length === 0) return <Empty what="words" />;
   return (
-    <div className="stack">
-      {e.vocab.map((v, i) => (
-        <details key={i} className="item">
-          <summary>
-            <span>
-              <span className="lead">
-                <Fa>{v.lemma}</Fa>
-              </span>{" "}
-              · {v.english}
-            </span>
-            <span className="pill">{v.level}</span>
-          </summary>
-          <div className="body">
-            <div className="translit">{v.transliteration}</div>
-            <div className="muted">
-              {v.part_of_speech} · {v.register}
-            </div>
+    <div className="word-list">
+      {items.map((w, i) => (
+        <div key={i} className="word-row">
+          <div className="word-main">
             <div>
-              “<Fa>{v.example_fragment}</Fa>”
+              <span className="lead">
+                <Fa>{w.lemma}</Fa>
+              </span>
+              {w.surface !== w.lemma && (
+                <span className="muted">
+                  {" "}
+                  (as written <Fa>{w.surface}</Fa>)
+                </span>
+              )}{" "}
+              <span className="translit">{w.transliteration}</span>
             </div>
-            <SaveWordButton word={v} language="fa" sessionId={sessionId} />
+            <div className="muted">
+              {w.english} · {w.part_of_speech}
+              {w.register !== "neutral" ? ` · ${w.register}` : ""} · {w.level}
+            </div>
           </div>
-        </details>
+          <SaveWordButton word={w} language="fa" sessionId={sessionId} compact />
+        </div>
       ))}
     </div>
   );
 }
 
-function IdiomsTab({ e }: { e: FarsiEnrichment }) {
-  if (e.idioms.length === 0) return <Empty what="idioms" />;
+function IdiomList({ items }: { items: FarsiIdiom[] }) {
+  if (items.length === 0) return <Empty what="idioms" />;
   return (
     <div className="stack">
-      {e.idioms.map((x, i) => (
+      {items.map((x, i) => (
         <details key={i} className="item">
           <summary>
             <span className="lead">
@@ -104,11 +154,11 @@ function IdiomsTab({ e }: { e: FarsiEnrichment }) {
   );
 }
 
-function VerbsTab({ e }: { e: FarsiEnrichment }) {
-  if (e.verbs.length === 0) return <Empty what="verbs" />;
+function VerbList({ items }: { items: FarsiVerb[] }) {
+  if (items.length === 0) return <Empty what="verbs" />;
   return (
     <div className="stack">
-      {e.verbs.map((v, i) => (
+      {items.map((v, i) => (
         <details key={i} className="item">
           <summary>
             <span>

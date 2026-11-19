@@ -44,6 +44,7 @@ Share a link, text, or clip from an iPhone. Get a mobile-first Spanish study ses
   - vocab[]: lemma, surface_form, part_of_speech, english, example_fragment, level
   - idioms[]: phrase, literal_meaning, actual_meaning, region_tags[], register
   - verbs[]: infinitive, english, form_in_source, form_english, tense, mood, person, conjugation_table, irregular, reflexive (null, or infinitive_reflexive, english, kind, explanation)
+- Farsi lessons use paragraphs[] too: persian (source), transliteration, english, key_phrase {persian, transliteration, english}, words[] (lemma, surface, transliteration, part_of_speech, english, level, register), verbs[] (with transliteration and a compound block), idioms[]. A help level (full, medium, light) sets how many words get glossed
 - grammar_notes[]
 - quiz[]: question, answer, type (vocab, idiom, verb, listening)
 

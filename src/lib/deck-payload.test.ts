@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deckKey, parseDeckPayload, toDeckPayload } from "./deck-payload";
+import { deckKey, parseDeckPayload, toDeckPayload, uniqueByKey } from "./deck-payload";
 
 const spanish = {
   lemma: "Mañana",
@@ -82,5 +82,36 @@ describe("parseDeckPayload", () => {
   it("rejects absurdly long text", () => {
     const bad = { ...toDeckPayload(spanish), english: "x".repeat(2000) };
     expect(parseDeckPayload(bad).ok).toBe(false);
+  });
+});
+
+describe("Farsi words without an example", () => {
+  const word = { lemma: "خانه", transliteration: "khâne", part_of_speech: "noun", english: "house", level: "A1" as const };
+
+  it("builds a payload with an empty example", () => {
+    const payload = toDeckPayload(word);
+    expect(payload.example).toBe("");
+    expect(payload.transliteration).toBe("khâne");
+  });
+
+  it("accepts an empty example", () => {
+    expect(parseDeckPayload(toDeckPayload(word)).ok).toBe(true);
+  });
+});
+
+describe("uniqueByKey", () => {
+  const payload = (lemma: string) => toDeckPayload({ lemma, english: "e", part_of_speech: "noun", example_fragment: "x" });
+
+  it("drops words that normalise to the same key, keeping the first", () => {
+    const out = uniqueByKey([payload("Casa"), payload("casa "), payload("perro")]);
+    expect(out.map((p) => p.lemma)).toEqual(["Casa", "perro"]);
+  });
+
+  it("keeps accented and unaccented words apart", () => {
+    expect(uniqueByKey([payload("mañana"), payload("manana")])).toHaveLength(2);
+  });
+
+  it("returns an empty list for no words", () => {
+    expect(uniqueByKey([])).toEqual([]);
   });
 });
