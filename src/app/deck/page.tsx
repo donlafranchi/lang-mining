@@ -3,10 +3,12 @@ import { RemoveCardButton } from "@/components/RemoveCardButton";
 import { deckSummary, listDeck, type DeckItem, type DeckSummary } from "@/lib/deck";
 import { isDue } from "@/lib/srs";
 import { LANGUAGES, resolveLanguage } from "@/lib/languages";
+import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function DeckPage(props: PageProps<"/deck">) {
+  const user = await requireUser();
   const sp = await props.searchParams;
   const language = resolveLanguage(Array.isArray(sp.language) ? sp.language[0] : sp.language);
 
@@ -14,7 +16,7 @@ export default async function DeckPage(props: PageProps<"/deck">) {
   let summary: DeckSummary = { total: 0, due: 0 };
   let setupError = "";
   try {
-    [items, summary] = await Promise.all([listDeck(language), deckSummary(language)]);
+    [items, summary] = await Promise.all([listDeck(user.id, language), deckSummary(user.id, language)]);
   } catch (err) {
     setupError = err instanceof Error ? err.message : "Could not load the deck.";
   }

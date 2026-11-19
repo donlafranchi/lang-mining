@@ -1,32 +1,30 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { GATE_COOKIE, gateToken, safeEqual } from "./lib/gate";
+import { SESSION_COOKIE, verifySession } from "./lib/session-token";
 
+// The gate only checks that the cookie is a genuine, unexpired session. Which person it is, and whether they still
+// exist, is checked on the server for each request (see lib/auth.ts).
 export async function proxy(request: NextRequest) {
-  const passcode = process.env.APP_PASSCODE;
+  const secret = process.env.SESSION_SECRET || (process.env.NODE_ENV === "production" ? "" : "development-only-session-secret-not-for-real-use");
 
-  if (!passcode) {
+  if (!secret) {
     // Fail closed in production so a missing env var never leaves the app open.
-    if (process.env.NODE_ENV === "production") {
-      return new NextResponse("APP_PASSCODE is not set.", { status: 503 });
-    }
-    return NextResponse.next();
+    return new NextResponse("SESSION_SECRET is not set.", { status: 503 });
   }
 
-  const cookie = request.cookies.get(GATE_COOKIE)?.value ?? "";
-  if (cookie && safeEqual(cookie, await gateToken(passcode))) return NextResponse.next();
+  const token = request.cookies.get(SESSION_COOKIE)?.value;
+  if (await verifySession(token, secret)) return NextResponse.next();
 
   if (request.nextUrl.pathname.startsWith("/api/")) {
-    return NextResponse.json({ error: "Locked." }, { status: 401 });
+    return NextResponse.json({ error: "Sign in first." }, { status: 401 });
   }
-  const unlock = new URL("/unlock", request.url);
-  return NextResponse.redirect(unlock);
+  return NextResponse.redirect(new URL("/login", request.url));
 }
 
 export const config = {
   matcher: [
-    // Everything except static assets, the unlock page and endpoint, and what an installed app needs before anyone has
-    // unlocked it: the service worker, the offline page and the icons. None of them holds private data.
-    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons/|apple-icon.png|sw.js|offline|unlock|api/unlock).*)",
+    // Everything except static assets, the login page and endpoint, and what an installed app needs before anyone has
+    // signed in: the service worker, the offline page and the icons. None of them holds private data.
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons/|apple-icon.png|sw.js|offline|login|api/login).*)",
   ],
 };

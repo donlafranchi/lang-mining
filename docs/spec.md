@@ -4,7 +4,7 @@
 Share a link, text, or clip from an iPhone. Get a mobile-first Spanish study session mined from it: transcript view, vocabulary, idioms, verb conjugations with English and reflexive notes, quiz. One lesson per session in general Latin American Spanish. Dialect-specific idioms may come later.
 
 ## Scope
-- Personal DIY tool, single user, private repo
+- DIY tool for Don and a few friends and family (fewer than 5 people), private repo. Each person has their own sign-in, lessons and deck
 - Not for resale. No App Store, no licensing program, no multi-tenant accounts
 - Phone side is a PWA plus an iOS Shortcut for the share sheet
 
@@ -49,13 +49,15 @@ Share a link, text, or clip from an iPhone. Get a mobile-first Spanish study ses
 - quiz[]: question, answer, type (vocab, idiom, verb, listening)
 
 ## Screens
+- Login (name and passcode), Admin (owner only: add, reset passcode, remove people)
 - Home: paste or upload box, recent sessions
 - Session tabs: Read (paragraph reader, swipe right for the next paragraph), Vocab, Idioms, Verbs (the last three list items from all paragraphs), Quiz
 - Tap a word: bottom sheet with lemma, meaning, conjugation, reflexive note
 - Save to deck: vocab and idioms go to a persistent review list
 
 ## Tables
-- sessions: id, source_type, source_url, dialect, language, status, created_at
+- app_users: id, name, name_key, passcode_hash, is_admin, token_version, failed_attempts, locked_until, created_at
+- sessions: id, user_id, source_type, source_url, dialect, language, status, created_at
 - source_texts: session_id, text, delete_after (nullable, unused since the retention job was removed)
 - enrichments: session_id, dialect, json, model, created_at
 - deck_items: id, kind, payload, dialect_tags, next_review_at

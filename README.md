@@ -34,6 +34,10 @@ npm test
 
 On Vercel, set the same variables from `.env.example` as project environment variables.
 
+## Accounts
+
+Each person signs in with a name and their own passcode, and has their own lessons and deck. The first sign-in ever, using `APP_PASSCODE` and the name you type, creates the owner. The owner adds, resets and removes people on the Admin page. Five wrong passcodes lock that account for 15 minutes. `SESSION_SECRET` signs the session cookie.
+
 ## Install on your phone
 
 - iPhone: open the site in Safari, tap Share, then Add to Home Screen.

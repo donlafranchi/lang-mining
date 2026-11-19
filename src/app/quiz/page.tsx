@@ -2,17 +2,19 @@ import Link from "next/link";
 import { Quiz } from "@/components/Quiz";
 import { listDue, type DeckItem } from "@/lib/deck";
 import { LANGUAGES, resolveLanguage } from "@/lib/languages";
+import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function QuizPage(props: PageProps<"/quiz">) {
+  const user = await requireUser();
   const sp = await props.searchParams;
   const language = resolveLanguage(Array.isArray(sp.language) ? sp.language[0] : sp.language);
 
   let cards: DeckItem[] = [];
   let setupError = "";
   try {
-    cards = await listDue(language);
+    cards = await listDue(user.id, language);
   } catch (err) {
     setupError = err instanceof Error ? err.message : "Could not load the quiz.";
   }

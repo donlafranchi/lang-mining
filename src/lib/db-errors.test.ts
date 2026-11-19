@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { explainDeckError, explainSaveError } from "./db-errors";
+import { explainDeckError, explainSaveError, explainUsersError } from "./db-errors";
 
 describe("explainSaveError", () => {
   it("points a missing language column at migration 0002", () => {
@@ -37,5 +37,21 @@ describe("explainDeckError", () => {
 
   it("does not match a missing table that is not the deck", () => {
     expect(explainDeckError('relation "other_table" does not exist')).toBeNull();
+  });
+});
+
+describe("explainUsersError", () => {
+  it("points a missing accounts table or user column at migration 0005", () => {
+    expect(explainUsersError("Could not find the table 'public.app_users' in the schema cache")).toMatch(/0005_users\.sql/);
+    expect(explainUsersError('relation "app_users" does not exist')).toMatch(/0005_users\.sql/);
+    expect(explainUsersError("Could not find the 'user_id' column of 'sessions' in the schema cache")).toMatch(/0005_users\.sql/);
+    expect(explainUsersError('column "user_id" does not exist')).toMatch(/0005_users\.sql/);
+  });
+
+  it("returns null for other errors", () => {
+    expect(explainUsersError("connection refused")).toBeNull();
+    expect(explainUsersError("")).toBeNull();
+    expect(explainUsersError('relation "other_table" does not exist')).toBeNull();
+    expect(explainUsersError("duplicate key value violates unique constraint")).toBeNull();
   });
 });
