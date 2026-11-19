@@ -3,7 +3,9 @@ import { DEFAULT_LANGUAGE, type Language } from "../languages";
 import { mergeFarsiBatches, parseFarsiBatch, type FarsiEnrichment } from "./farsi-schema";
 import { batchParagraphs, splitParagraphs, MAX_ARTICLE_CHARS, type NumberedParagraph } from "./paragraphs";
 import { buildBatchUserPrompt, buildSystemPrompt } from "./prompt";
-import type { Analyzer } from "../analysis/contract";
+import type { Analyzer, ParagraphAnalysis } from "../analysis/contract";
+import { detectSpanishPatterns } from "../pattern-rules/detect-es";
+import type { PatternUse } from "../patterns";
 import { harvestAnalysis } from "../lexicon/harvest";
 import { lexiconKey, normalizePos } from "../lexicon/model";
 import { knownToFarsiWord, knownToVocab, lookupTokens, orderByAppearance, splitKnown, type KnownWord, type LemmaHint } from "../lexicon/lookup";
@@ -133,27 +135,37 @@ async function enrichInBatches<R, L>(args: {
   merge: (paragraphs: string[], results: R[]) => L;
   lexicon?: LexiconStore;
   analyzer?: Analyzer | null;
-  /** Adds the words the lexicon explained to the merged lesson. */
-  inject?: (lesson: L, explained: Map<number, { token: string; word: KnownWord }[]>, paragraphs: string[]) => L;
+  /** Adds the words the lexicon explained, and patterns found by rules, to the merged lesson. */
+  inject?: (
+    lesson: L,
+    explained: Map<number, { token: string; word: KnownWord }[]>,
+    paragraphs: string[],
+    patterns: PatternUse[][] | null,
+  ) => L;
+  /** Finds grammar patterns from the analysis, so the model need not. */
+  detectPatterns?: (analysis: ParagraphAnalysis, text: string) => PatternUse[];
 }): Promise<L> {
   const paragraphs = splitParagraphs(args.text);
   if (paragraphs.length === 0) throw new EnrichmentError("Input text is empty.");
+
+  // Language analysis, when the service is set up. If it is down the lesson is built without it.
+  let analyses: ParagraphAnalysis[] | null = null;
+  if (args.analyzer) {
+    try {
+      analyses = await args.analyzer.analyze(args.language, paragraphs);
+    } catch (err) {
+      console.error("analysis skipped", err instanceof Error ? err.message : err);
+    }
+  }
 
   // Words our own lexicon already knows are explained from it, and the model is told to leave them out.
   const skips = new Map<number, string[]>();
   const explained = new Map<number, { token: string; word: KnownWord }[]>();
   if (args.lexicon) {
-    // The analyzer, when there is one, says which dictionary word each written form belongs to. If it is down the
-    // lesson is built without it.
     const hints = new Map<string, LemmaHint>();
-    if (args.analyzer) {
-      try {
-        const analyses = await args.analyzer.analyze(args.language, paragraphs);
-        for (const a of analyses) for (const t of a.tokens) if (t.is_word && t.lemma) hints.set(lexiconKey(t.text), { lemma: t.lemma, pos: normalizePos(t.pos) });
-        await harvestAnalysis(args.lexicon, args.language, analyses).catch((e) => console.error("analysis harvest skipped", e instanceof Error ? e.message : e));
-      } catch (err) {
-        console.error("analysis skipped", err instanceof Error ? err.message : err);
-      }
+    if (analyses) {
+      for (const a of analyses) for (const t of a.tokens) if (t.is_word && t.lemma) hints.set(lexiconKey(t.text), { lemma: t.lemma, pos: normalizePos(t.pos) });
+      await harvestAnalysis(args.lexicon, args.language, analyses).catch((e) => console.error("analysis harvest skipped", e instanceof Error ? e.message : e));
     }
     const known = await lookupTokens(args.lexicon, args.language, paragraphs.flatMap((p) => tokens(p)), hints);
     paragraphs.forEach((text, i) => {
@@ -163,7 +175,9 @@ async function enrichInBatches<R, L>(args: {
     });
   }
 
-  const system = buildSystemPrompt(args.language, args.help);
+  // Patterns found by rules replace the model's, so it is not asked for them.
+  const patternsByCode = analyses && args.detectPatterns ? analyses.map((a, i) => args.detectPatterns!(a, paragraphs[i])) : null;
+  const system = buildSystemPrompt(args.language, args.help, { patterns: !patternsByCode });
   const batches = batchParagraphs(paragraphs, batchLimits(args.language, args.help));
   const results = await mapLimit(batches, BATCH_CONCURRENCY, (batch: NumberedParagraph[]) =>
     completeValidated({
@@ -178,7 +192,7 @@ async function enrichInBatches<R, L>(args: {
     }),
   );
   const lesson = args.merge(paragraphs, results);
-  return args.inject && args.lexicon ? args.inject(lesson, explained, paragraphs) : lesson;
+  return args.inject ? args.inject(lesson, explained, paragraphs, patternsByCode) : lesson;
 }
 
 export async function enrichText(args: {
@@ -232,10 +246,12 @@ export async function enrichText(args: {
     merge: mergeBatches,
     lexicon,
     analyzer,
-    inject: (lesson, explained, paragraphs) => ({
+    detectPatterns: (analysis, text) => detectSpanishPatterns(analysis.tokens, text),
+    inject: (lesson, explained, paragraphs, patterns) => ({
       ...lesson,
       paragraphs: lesson.paragraphs.map((p, i) => ({
         ...p,
+        ...(patterns ? { patterns: patterns[i] } : {}),
         vocab: orderByAppearance(
           paragraphs[i],
           [...(explained.get(i + 1) ?? []).map((x) => knownToVocab(x.token, x.word)), ...p.vocab],
