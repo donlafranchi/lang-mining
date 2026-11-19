@@ -7,7 +7,7 @@ import type { Language } from "@/lib/languages";
 type Word = Parameters<typeof toDeckPayload>[0];
 
 /** Saves a vocab entry to the deck. Saving the same word again is harmless. */
-export function SaveWordButton(props: { word: Word; language: Language; sessionId: string; compact?: boolean }) {
+export function SaveWordButton(props: { word: Word; language: Language; sessionId?: string; compact?: boolean }) {
   const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
   const [error, setError] = useState("");
 

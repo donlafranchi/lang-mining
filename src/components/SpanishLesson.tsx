@@ -19,20 +19,22 @@ export function SpanishLesson({
   tab,
   sessionId,
   seenPatterns,
+  coreRanks,
 }: {
   e: Enrichment;
   tab: SpanishTab;
   sessionId: string;
   /** Pattern ids this person has already been shown. */
   seenPatterns: string[];
+  coreRanks: Record<string, number>;
 }) {
-  if (tab === "read") return <Reader e={e} sessionId={sessionId} seenPatterns={seenPatterns} />;
+  if (tab === "read") return <Reader e={e} sessionId={sessionId} seenPatterns={seenPatterns} coreRanks={coreRanks} />;
   if (tab === "vocab") {
     const words = allVocab(e);
     return (
       <div className="stack">
         <SaveAllButton words={words} language="es" sessionId={sessionId} />
-        <VocabList items={words} sessionId={sessionId} />
+        <VocabList items={words} sessionId={sessionId} coreRanks={coreRanks} />
       </div>
     );
   }
@@ -40,7 +42,17 @@ export function SpanishLesson({
   return <VerbList items={allVerbs(e)} />;
 }
 
-function Reader({ e, sessionId, seenPatterns }: { e: Enrichment; sessionId: string; seenPatterns: string[] }) {
+function Reader({
+  e,
+  sessionId,
+  seenPatterns,
+  coreRanks,
+}: {
+  e: Enrichment;
+  sessionId: string;
+  seenPatterns: string[];
+  coreRanks: Record<string, number>;
+}) {
   const patterns = lessonPatterns(e.paragraphs);
   const pages = e.paragraphs.map((p, i) => (
     <div key={i} className="stack">
@@ -61,7 +73,7 @@ function Reader({ e, sessionId, seenPatterns }: { e: Enrichment; sessionId: stri
         <div className="stack">
           <div className="section-label">Vocabulary</div>
           <SaveAllButton words={p.vocab} language="es" sessionId={sessionId} />
-          <VocabList items={p.vocab} sessionId={sessionId} />
+          <VocabList items={p.vocab} sessionId={sessionId} coreRanks={coreRanks} />
         </div>
       )}
       {p.idioms.length > 0 && (
@@ -106,7 +118,7 @@ function Tags({ items }: { items: string[] }) {
 }
 
 /** One line per word so a long list is quick to scan, with a save button on each. */
-function VocabList({ items, sessionId }: { items: Vocab[]; sessionId: string }) {
+function VocabList({ items, sessionId, coreRanks }: { items: Vocab[]; sessionId: string; coreRanks: Record<string, number> }) {
   if (items.length === 0) return <Empty what="vocabulary" />;
   return (
     <div className="word-list">
@@ -121,6 +133,7 @@ function VocabList({ items, sessionId }: { items: Vocab[]; sessionId: string }) 
               · {v.english}
             </div>
             <div className="muted">
+              {coreRanks[v.lemma] ? <span className="pill">core #{coreRanks[v.lemma]}</span> : null}{" "}
               {v.part_of_speech} · {v.level}
               {v.example_fragment ? ` · “${v.example_fragment}”` : ""}
             </div>

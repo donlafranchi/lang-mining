@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toDeckPayload } from "@/lib/deck-payload";
 import { MAX_SAVE_BATCH } from "@/lib/deck-limits";
@@ -8,7 +9,8 @@ import type { Language } from "@/lib/languages";
 type Word = Parameters<typeof toDeckPayload>[0];
 
 /** Saves a whole list of words to the deck in one tap. Words already saved are skipped. */
-export function SaveAllButton(props: { words: Word[]; language: Language; sessionId: string; label?: string }) {
+export function SaveAllButton(props: { words: Word[]; language: Language; sessionId?: string; label?: string; refresh?: boolean }) {
+  const router = useRouter();
   const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
   const [summary, setSummary] = useState("");
   const [error, setError] = useState("");
@@ -40,6 +42,8 @@ export function SaveAllButton(props: { words: Word[]; language: Language; sessio
       const already = props.words.length - created;
       setSummary(already > 0 ? `Saved ${created} new, ${already} already in your deck.` : `Saved ${created} words.`);
       setState("saved");
+      // On the core list the next words should replace the ones just saved.
+      if (props.refresh) router.refresh();
     } catch {
       setError("Could not reach the server. Check your connection and try again.");
       setState("idle");

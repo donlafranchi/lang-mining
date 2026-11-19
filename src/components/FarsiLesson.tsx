@@ -27,20 +27,22 @@ export function FarsiLesson({
   tab,
   sessionId,
   seenPatterns,
+  coreRanks,
 }: {
   e: FarsiEnrichment;
   tab: FarsiTab;
   sessionId: string;
   /** Pattern ids this person has already been shown. */
   seenPatterns: string[];
+  coreRanks: Record<string, number>;
 }) {
-  if (tab === "read") return <Reader e={e} sessionId={sessionId} seenPatterns={seenPatterns} />;
+  if (tab === "read") return <Reader e={e} sessionId={sessionId} seenPatterns={seenPatterns} coreRanks={coreRanks} />;
   if (tab === "vocab") {
     const words = allFarsiWords(e);
     return (
       <div className="stack">
         <SaveAllButton words={words} language="fa" sessionId={sessionId} />
-        <WordList items={words} sessionId={sessionId} />
+        <WordList items={words} sessionId={sessionId} coreRanks={coreRanks} />
       </div>
     );
   }
@@ -48,7 +50,17 @@ export function FarsiLesson({
   return <VerbList items={allFarsiVerbs(e)} />;
 }
 
-function Reader({ e, sessionId, seenPatterns }: { e: FarsiEnrichment; sessionId: string; seenPatterns: string[] }) {
+function Reader({
+  e,
+  sessionId,
+  seenPatterns,
+  coreRanks,
+}: {
+  e: FarsiEnrichment;
+  sessionId: string;
+  seenPatterns: string[];
+  coreRanks: Record<string, number>;
+}) {
   const patterns = lessonPatterns(e.paragraphs);
   const pages = e.paragraphs.map((p, i) => (
     <div key={i} className="stack">
@@ -74,7 +86,7 @@ function Reader({ e, sessionId, seenPatterns }: { e: FarsiEnrichment; sessionId:
         <div className="stack">
           <div className="section-label">Words ({p.words.length})</div>
           <SaveAllButton words={p.words} language="fa" sessionId={sessionId} />
-          <WordList items={p.words} sessionId={sessionId} />
+          <WordList items={p.words} sessionId={sessionId} coreRanks={coreRanks} />
         </div>
       )}
 
@@ -115,7 +127,7 @@ function Reader({ e, sessionId, seenPatterns }: { e: FarsiEnrichment; sessionId:
 }
 
 /** One line per word so a long list is quick to scan: script, how to say it, what it means. */
-function WordList({ items, sessionId }: { items: FarsiWord[]; sessionId: string }) {
+function WordList({ items, sessionId, coreRanks }: { items: FarsiWord[]; sessionId: string; coreRanks: Record<string, number> }) {
   if (items.length === 0) return <Empty what="words" />;
   return (
     <div className="word-list">
@@ -135,6 +147,7 @@ function WordList({ items, sessionId }: { items: FarsiWord[]; sessionId: string 
               <span className="translit">{w.transliteration}</span>
             </div>
             <div className="muted">
+              {coreRanks[w.lemma] ? <span className="pill">core #{coreRanks[w.lemma]}</span> : null}{" "}
               {w.english} · {w.part_of_speech}
               {w.register !== "neutral" ? ` · ${w.register}` : ""} · {w.level}
             </div>
