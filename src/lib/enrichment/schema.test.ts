@@ -246,3 +246,37 @@ describe("mergeBatches", () => {
     expect(parseEnrichment(JSON.stringify(old)).ok).toBe(false);
   });
 });
+
+describe("grammar patterns on a paragraph", () => {
+  const base = {
+    gist: "g",
+    grammar_notes: [],
+    paragraphs: [
+      { n: 1, english: "e", key_phrase: { spanish: "a", english: "b" }, verbs: [], vocab: [], idioms: [] },
+    ],
+  };
+
+  it("reads a paragraph with no patterns key as having none (older answers and lessons)", () => {
+    const r = parseBatch(JSON.stringify(base), [1]);
+    expect(r.ok && r.data.paragraphs[0].patterns).toEqual([]);
+  });
+
+  it("keeps the patterns the model tagged", () => {
+    const withPattern = {
+      ...base,
+      paragraphs: [{ ...base.paragraphs[0], patterns: [{ id: "present_perfect", quote: "ha dado" }] }],
+    };
+    const r = parseBatch(JSON.stringify(withPattern), [1]);
+    expect(r.ok && r.data.paragraphs[0].patterns).toEqual([{ id: "present_perfect", quote: "ha dado" }]);
+  });
+});
+
+describe("Spanish prompt", () => {
+  it("asks for patterns and lists the catalog ids", async () => {
+    const { buildSystemPrompt } = await import("./prompt");
+    const prompt = buildSystemPrompt("es", "light");
+    expect(prompt).toMatch(/patterns/);
+    expect(prompt).toMatch(/present_perfect/);
+    expect(prompt).toMatch(/ha dado/);
+  });
+});

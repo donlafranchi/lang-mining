@@ -1,3 +1,4 @@
+import { patternPromptLines } from "../patterns";
 import { defaultHelp, type HelpLevel } from "../help";
 import type { Language } from "../languages";
 
@@ -25,13 +26,16 @@ function buildSpanishPrompt(help: HelpLevel): string {
 
 The user message lists paragraphs as [1], [2] and so on. Return ONLY JSON, no prose before or after, no markdown fence. The JSON must have exactly these keys:
 - gist: one sentence in English saying what these paragraphs are about
-- paragraphs: one entry for EVERY paragraph number you were given, each exactly once, each { n (the paragraph number), english (a faithful English translation of the whole paragraph), key_phrase { spanish, english } (the single most useful phrase or construction in the paragraph, quoted exactly), verbs, vocab, idioms }
+- paragraphs: one entry for EVERY paragraph number you were given, each exactly once, each { n (the paragraph number), english (a faithful English translation of the whole paragraph), key_phrase { spanish, english } (the single most useful phrase or construction in the paragraph, quoted exactly), verbs, vocab, idioms, patterns }
 - grammar_notes: up to 2 short notes on notable constructions across these paragraphs
 
 Per paragraph:
 - verbs: ${SPANISH_VERBS_RULE[help]}, each { infinitive, english (the plain English meaning of the infinitive, for example "to wash"), form_in_source, form_english (what the form means as used in the source, for example "she was washing"), tense, mood, person, conjugation_table (object mapping pronoun to form for that tense), irregular (boolean), reflexive }
 - vocab: ${SPANISH_WORDS_RULE[help]}, each { lemma, surface_form, part_of_speech, english, example_fragment (${SPANISH_EXAMPLE_RULE[help]}), level (A1, A2, B1, B2, C1 or C2) }
 - idioms: up to 2 idioms or fixed expressions, each { phrase, literal_meaning, actual_meaning, region_tags (where it is used, empty array if general), register (formal, neutral, informal, slang or vulgar) }. Use an empty array when there are none.
+
+- patterns: every grammar pattern from the list below that the paragraph uses, each { id (exactly as listed), quote (the exact words from the paragraph, for example "ha dado") }. Use each id at most once per paragraph, give the first use, and use an empty array when none appear. Only list a pattern when the paragraph really uses it. The patterns are:
+${patternPromptLines()}
 
 Reflexive verbs: the reflexive key is required on every verb. Use null when the verb is not used with se in the source. When it is, set it to { infinitive_reflexive (for example "lavarse"), english (what the reflexive version means, for example "to wash oneself"), kind, explanation (one or two plain sentences for an English speaker) }. kind is exactly one of:
 - reflexive: the subject does the action to itself (me lavo, I wash myself)

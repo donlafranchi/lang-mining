@@ -21,8 +21,8 @@ export default async function QuizPage(props: PageProps<"/quiz">) {
 
   return (
     <main className="shell">
-      <Link href={`/deck?language=${language}`} className="back">
-        ← Deck
+      <Link href="/study" className="back">
+        ← Study
       </Link>
       <div className="brand">
         <h1>Quiz</h1>

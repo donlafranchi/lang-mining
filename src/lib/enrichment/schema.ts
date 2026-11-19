@@ -84,6 +84,12 @@ const keyPhraseSchema = z.object({
   english: z.string().min(1).max(300),
 });
 
+const patternUseSchema = z.object({
+  // Which catalog pattern (see lib/patterns.ts). Unknown ids are ignored when shown, never an error.
+  id: z.string().min(1).max(40),
+  quote: z.string().max(200).default(""),
+});
+
 // What the model returns for one paragraph. The Spanish text is not here: code attaches the source paragraph.
 const paragraphResultSchema = z.object({
   n: z.number().int().positive(),
@@ -92,6 +98,8 @@ const paragraphResultSchema = z.object({
   verbs: z.array(verbSchema).max(6),
   vocab: z.array(vocabSchema).max(12),
   idioms: z.array(idiomSchema).max(6),
+  // Older lessons were built without patterns, so they read as none.
+  patterns: z.array(patternUseSchema).max(8).default([]),
 });
 
 export const batchResultSchema = z.object({

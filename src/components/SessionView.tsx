@@ -29,6 +29,8 @@ export function SessionView(props: {
   sourceAvailable: boolean;
   /** The signed-in person's help level for this lesson's language. */
   defaultHelp: HelpLevel;
+  /** Grammar pattern ids this person has already been shown. */
+  seenPatterns: string[];
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("read");
@@ -128,7 +130,7 @@ export function SessionView(props: {
           {props.session.language === "fa" ? (
             <FarsiLesson e={enrichment as FarsiEnrichment} tab={tab} sessionId={props.session.id} />
           ) : (
-            <SpanishLesson e={enrichment as Enrichment} tab={tab} sessionId={props.session.id} />
+            <SpanishLesson e={enrichment as Enrichment} tab={tab} sessionId={props.session.id} seenPatterns={props.seenPatterns} />
           )}
         </>
       )}

@@ -2,6 +2,8 @@
 
 import { allIdioms, allVerbs, allVocab } from "@/lib/enrichment/flatten";
 import type { Enrichment, Idiom, ReflexiveKind, Verb, Vocab } from "@/lib/enrichment/schema";
+import { lessonPatterns, patternById } from "@/lib/patterns";
+import { PatternCard } from "./PatternCard";
 import { Pager } from "./Pager";
 import { SaveAllButton } from "./SaveAllButton";
 import { SaveWordButton } from "./SaveWordButton";
@@ -12,8 +14,19 @@ function Empty({ what }: { what: string }) {
   return <p className="muted">No {what} found in this text.</p>;
 }
 
-export function SpanishLesson({ e, tab, sessionId }: { e: Enrichment; tab: SpanishTab; sessionId: string }) {
-  if (tab === "read") return <Reader e={e} sessionId={sessionId} />;
+export function SpanishLesson({
+  e,
+  tab,
+  sessionId,
+  seenPatterns,
+}: {
+  e: Enrichment;
+  tab: SpanishTab;
+  sessionId: string;
+  /** Pattern ids this person has already been shown. */
+  seenPatterns: string[];
+}) {
+  if (tab === "read") return <Reader e={e} sessionId={sessionId} seenPatterns={seenPatterns} />;
   if (tab === "vocab") {
     const words = allVocab(e);
     return (
@@ -27,7 +40,9 @@ export function SpanishLesson({ e, tab, sessionId }: { e: Enrichment; tab: Spani
   return <VerbList items={allVerbs(e)} />;
 }
 
-function Reader({ e, sessionId }: { e: Enrichment; sessionId: string }) {
+function Reader({ e, sessionId, seenPatterns }: { e: Enrichment; sessionId: string; seenPatterns: string[] }) {
+  const patterns = lessonPatterns(e.paragraphs);
+  const newPatterns = patterns.filter((x) => !seenPatterns.includes(x.pattern.id));
   const pages = e.paragraphs.map((p, i) => (
     <div key={i} className="stack">
       <div className="card para-es">{p.spanish}</div>
@@ -36,6 +51,18 @@ function Reader({ e, sessionId }: { e: Enrichment; sessionId: string }) {
         <div>{p.key_phrase.spanish}</div>
         <div className="muted">{p.key_phrase.english}</div>
       </div>
+      {(p.patterns ?? []).some((u) => patternById(u.id)) && (
+        <div className="tags">
+          {(p.patterns ?? [])
+            .filter((u) => patternById(u.id))
+            .map((u) => (
+              <span key={u.id} className="pill">
+                {patternById(u.id)!.title.replace(/ \(.*\)$/, "")}
+                {u.quote ? `: ${u.quote}` : ""}
+              </span>
+            ))}
+        </div>
+      )}
       {p.verbs.length > 0 && (
         <div className="stack">
           <div className="section-label">Verbs</div>
@@ -62,7 +89,25 @@ function Reader({ e, sessionId }: { e: Enrichment; sessionId: string }) {
   return (
     <div className="stack">
       <div className="card">{e.summary}</div>
+      {newPatterns.length > 0 && (
+        <div className="stack">
+          <div className="section-label">New to you</div>
+          {newPatterns.map((x) => (
+            <PatternCard key={x.pattern.id} pattern={x.pattern} quotes={x.quotes} isNew />
+          ))}
+        </div>
+      )}
       <Pager pages={pages} label="Paragraph" />
+      {patterns.length > newPatterns.length && (
+        <div className="stack">
+          <div className="section-label">Patterns you know</div>
+          {patterns
+            .filter((x) => seenPatterns.includes(x.pattern.id))
+            .map((x) => (
+              <PatternCard key={x.pattern.id} pattern={x.pattern} quotes={x.quotes} isNew={false} />
+            ))}
+        </div>
+      )}
       {e.grammar_notes.length > 0 && (
         <div className="card stack">
           <div className="lead">Grammar notes</div>

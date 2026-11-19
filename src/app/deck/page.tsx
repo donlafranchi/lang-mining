@@ -24,8 +24,8 @@ export default async function DeckPage(props: PageProps<"/deck">) {
 
   return (
     <main className="shell">
-      <Link href="/" className="back">
-        ← Back
+      <Link href="/study" className="back">
+        ← Study
       </Link>
       <div className="brand">
         <h1>Deck</h1>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DeleteButton } from "@/components/DeleteButton";
 import { SessionView } from "@/components/SessionView";
+import { listSeenPatterns } from "@/lib/pattern-seen";
 import { isUuid } from "@/lib/ids";
 import { getSession } from "@/lib/sessions";
 import { effectiveStatus } from "@/lib/status";
@@ -15,6 +16,8 @@ export default async function SessionPage(props: PageProps<"/sessions/[id]">) {
   if (!isUuid(id)) notFound();
   const detail = await getSession(id, user.id);
   if (!detail) notFound();
+  // A missing list only means every pattern is shown as new, so it must not break the lesson.
+  const seenPatterns = await listSeenPatterns(user.id).catch((): string[] => []);
 
   return (
     <main className="shell">
@@ -30,6 +33,7 @@ export default async function SessionPage(props: PageProps<"/sessions/[id]">) {
         model={detail.model}
         sourceAvailable={detail.sourceAvailable}
         defaultHelp={user.help[detail.session.language]}
+        seenPatterns={seenPatterns}
       />
       <div className="danger-zone">
         <DeleteButton id={detail.session.id} redirectTo="/" label="Delete this lesson" />
