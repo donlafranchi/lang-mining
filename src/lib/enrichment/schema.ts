@@ -84,7 +84,7 @@ const keyPhraseSchema = z.object({
   english: z.string().min(1).max(300),
 });
 
-const patternUseSchema = z.object({
+export const patternUseSchema = z.object({
   // Which catalog pattern (see lib/patterns.ts). Unknown ids are ignored when shown, never an error.
   id: z.string().min(1).max(40),
   quote: z.string().max(200).default(""),

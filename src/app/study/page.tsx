@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { deckSummary } from "@/lib/deck";
-import { SPANISH_PATTERNS } from "@/lib/patterns";
+import { patternsFor } from "@/lib/patterns";
 import { listSeenPatterns } from "@/lib/pattern-seen";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ export default async function StudyPage() {
     deck = { total: es.total + fa.total, due: es.due + fa.due };
   } catch {}
   const seen = await listSeenPatterns(user.id).catch((): string[] => []);
-  const toLearn = SPANISH_PATTERNS.filter((p) => !seen.includes(p.id)).length;
+  const toLearn = [...patternsFor("es"), ...patternsFor("fa")].filter((p) => !seen.includes(p.id)).length;
 
   return (
     <main className="shell">

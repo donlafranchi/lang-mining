@@ -195,3 +195,11 @@ describe("mergeFarsiBatches", () => {
     expect(parseFarsiEnrichment(JSON.stringify(old)).ok).toBe(false);
   });
 });
+
+describe("Farsi patterns", () => {
+  it("asks for patterns and lists the Farsi ids in the Farsi prompt only", async () => {
+    const { buildSystemPrompt } = await import("./prompt");
+    expect(buildSystemPrompt("fa", "full")).toMatch(/fa_present_perfect/);
+    expect(buildSystemPrompt("es", "full")).not.toMatch(/fa_present_perfect/);
+  });
+});

@@ -35,7 +35,7 @@ Per paragraph:
 - idioms: up to 2 idioms or fixed expressions, each { phrase, literal_meaning, actual_meaning, region_tags (where it is used, empty array if general), register (formal, neutral, informal, slang or vulgar) }. Use an empty array when there are none.
 
 - patterns: every grammar pattern from the list below that the paragraph uses, each { id (exactly as listed), quote (the exact words from the paragraph, for example "ha dado") }. Use each id at most once per paragraph, give the first use, and use an empty array when none appear. Only list a pattern when the paragraph really uses it. The patterns are:
-${patternPromptLines()}
+${patternPromptLines("es")}
 
 Reflexive verbs: the reflexive key is required on every verb. Use null when the verb is not used with se in the source. When it is, set it to { infinitive_reflexive (for example "lavarse"), english (what the reflexive version means, for example "to wash oneself"), kind, explanation (one or two plain sentences for an English speaker) }. kind is exactly one of:
 - reflexive: the subject does the action to itself (me lavo, I wash myself)
@@ -71,13 +71,16 @@ function buildFarsiPrompt(help: HelpLevel): string {
 
 The user message lists paragraphs as [1], [2] and so on. Return ONLY JSON, no prose before or after, no markdown fence. The JSON must have exactly these keys:
 - gist: one sentence in English saying what these paragraphs are about
-- paragraphs: one entry for EVERY paragraph number you were given, each exactly once, each { n (the paragraph number), transliteration (the whole paragraph in Latin letters, one consistent system with â for the long a, written the way it is said), english (a faithful English translation of the whole paragraph), key_phrase { persian, transliteration, english } (the single most useful phrase or construction in the paragraph, quoted exactly), words, verbs, idioms }
+- paragraphs: one entry for EVERY paragraph number you were given, each exactly once, each { n (the paragraph number), transliteration (the whole paragraph in Latin letters, one consistent system with â for the long a, written the way it is said), english (a faithful English translation of the whole paragraph), key_phrase { persian, transliteration, english } (the single most useful phrase or construction in the paragraph, quoted exactly), words, verbs, idioms, patterns }
 - grammar_notes: up to 2 short notes on notable constructions across these paragraphs, such as the ezafe or attached pronouns
 
 Per paragraph:
 - words: ${FARSI_WORDS_RULE[help]}, each { lemma (dictionary form, Persian script), surface (the form as written in the paragraph, Persian script), transliteration, part_of_speech, english, level (A1, A2, B1, B2, C1 or C2), register (formal, neutral or colloquial) }
 - verbs: ${FARSI_VERBS_RULE[help]}, each { infinitive (Persian script), transliteration, english (the plain English meaning of the infinitive, for example "to see"), form_in_source, form_transliteration, form_english (what the form means as used in the source), tense, mood, person, conjugation_table (object mapping pronoun to form for that tense, in Persian script), irregular (boolean), compound }
 - idioms: up to 2 idioms or fixed expressions, each { phrase (Persian script), transliteration, literal_meaning, actual_meaning, register (formal, neutral or colloquial) }. Use an empty array when there are none.
+
+- patterns: every grammar pattern from the list below that the paragraph uses, each { id (exactly as listed), quote (the exact words from the paragraph, in Persian script) }. Use each id at most once per paragraph, give the first use, and use an empty array when none appear. Only list a pattern when the paragraph really uses it. The patterns are:
+${patternPromptLines("fa")}
 
 Compound verbs: the compound key is required on every verb. Use null for a simple verb. When the verb is a noun or adjective plus a light verb (for example kâr kardan, "to work"), set it to { parts (one string with the pieces and their meanings, for example "kâr (work) + kardan (to do)"), explanation (one or two plain sentences for an English speaker) }.
 

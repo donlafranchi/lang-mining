@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Pattern } from "@/lib/patterns";
+import { patternById, type Pattern, type PatternUse } from "@/lib/patterns";
 
 /** The teaching for one pattern. When it is new to the person it opens with a Got it button that remembers it. */
 export function PatternCard(props: { pattern: Pattern; quotes: string[]; isNew: boolean }) {
@@ -53,9 +53,12 @@ export function PatternCard(props: { pattern: Pattern; quotes: string[]; isNew: 
         <div>{pattern.explanation}</div>
         <div className="word-list">
           {pattern.examples.map((x) => (
-            <div key={x.spanish} className="word-row">
+            <div key={x.text} className="word-row">
               <div className="word-main">
-                <div className="lead">{x.spanish}</div>
+                <div className="lead" dir="auto">
+                  {x.text}
+                </div>
+                {x.translit && <div className="translit">{x.translit}</div>}
                 <div className="muted">{x.english}</div>
               </div>
             </div>
@@ -69,5 +72,49 @@ export function PatternCard(props: { pattern: Pattern; quotes: string[]; isNew: 
         {error && <p className="error">{error}</p>}
       </div>
     </details>
+  );
+}
+
+/** "New to you" cards for the patterns in a lesson this person has not been shown yet. */
+export function NewPatterns(props: { patterns: { pattern: Pattern; quotes: string[] }[]; seen: string[] }) {
+  const fresh = props.patterns.filter((x) => !props.seen.includes(x.pattern.id));
+  if (fresh.length === 0) return null;
+  return (
+    <div className="stack">
+      <div className="section-label">New to you</div>
+      {fresh.map((x) => (
+        <PatternCard key={x.pattern.id} pattern={x.pattern} quotes={x.quotes} isNew />
+      ))}
+    </div>
+  );
+}
+
+/** Reference cards for patterns in this lesson the person already knows. */
+export function KnownPatterns(props: { patterns: { pattern: Pattern; quotes: string[] }[]; seen: string[] }) {
+  const known = props.patterns.filter((x) => props.seen.includes(x.pattern.id));
+  if (known.length === 0) return null;
+  return (
+    <div className="stack">
+      <div className="section-label">Patterns you know</div>
+      {known.map((x) => (
+        <PatternCard key={x.pattern.id} pattern={x.pattern} quotes={x.quotes} isNew={false} />
+      ))}
+    </div>
+  );
+}
+
+/** Small tags under a paragraph saying which patterns it uses. */
+export function PatternTags({ uses }: { uses: PatternUse[] | undefined }) {
+  const shown = (uses ?? []).filter((u) => patternById(u.id));
+  if (shown.length === 0) return null;
+  return (
+    <div className="tags">
+      {shown.map((u) => (
+        <span key={u.id} className="pill" dir="auto">
+          {patternById(u.id)!.title.replace(/ \(.*\)$/, "")}
+          {u.quote ? `: ${u.quote}` : ""}
+        </span>
+      ))}
+    </div>
   );
 }
