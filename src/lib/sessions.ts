@@ -8,9 +8,10 @@ import { harvestSafely } from "./lexicon/harvest";
 import { supabaseLexiconStore } from "./lexicon/store";
 import { cleanTitle } from "./titles";
 import { fetchArticleText, looksLikeUrl } from "./ingest/extract";
-import type { HelpLevel } from "./help";
+import { defaultHelp, type HelpLevel } from "./help";
 import { resolveLanguage, type Language } from "./languages";
 import type { ModelId } from "./models";
+import { libraryKey, reuseFromLibrary, shareLesson, unshareLesson } from "./library";
 import { notifyLesson } from "./push";
 import { db } from "./supabase";
 
@@ -78,7 +79,9 @@ export async function createSession(args: {
   input: string;
   language: Language;
   userId: string;
-}): Promise<{ id: string; text: string; autoTitle: string | null }> {
+  /** The help level the lesson will be built at. Together with the language it decides whether a shared copy fits. */
+  help?: HelpLevel;
+}): Promise<{ id: string; text: string; autoTitle: string | null; libraryKey: string | null; reused: boolean }> {
   const input = args.input.trim();
   if (!input) throw new UserFacingError("Paste some text or a link first.");
 
@@ -135,7 +138,17 @@ export async function createSession(args: {
   // A stand-in title (the start of the text, or the site name) can be replaced by the model's title once the lesson
   // is built. A page's own title is already a good name, so it stays.
   const autoTitle = pageTitle ? null : titleFor(text, sourceUrl);
-  return { id: session.id, text, autoTitle };
+
+  // An article from a link that someone has already turned into a lesson is copied, not built again.
+  const key = sourceUrl ? libraryKey(sourceUrl, args.language, args.help ?? defaultHelp(args.language)) : null;
+  if (key) {
+    const reused = await reuseFromLibrary(session.id, key);
+    if (reused) {
+      await applyModelTitle(session.id, autoTitle, reused.title);
+      return { id: session.id, text, autoTitle, libraryKey: key, reused: true };
+    }
+  }
+  return { id: session.id, text, autoTitle, libraryKey: key, reused: false };
 }
 
 /**
@@ -173,6 +186,8 @@ export async function buildSession(args: {
   model: ModelId;
   /** The stand-in title to replace with the model's title. Null leaves the title alone. */
   autoTitle?: string | null;
+  /** Set for lessons from a link: once built, the lesson is offered to the next person who adds the same article. */
+  libraryKey?: string | null;
 }): Promise<void> {
   try {
     const enrichment = await enrichText({
@@ -186,6 +201,7 @@ export async function buildSession(args: {
     await saveEnrichment(args.id, args.model, enrichment);
     await db().from("sessions").update({ status: "ready", error: null }).eq("id", args.id);
     await applyModelTitle(args.id, args.autoTitle ?? null, enrichment.title);
+    if (args.libraryKey) await shareLesson(args.id, args.libraryKey);
     await notifyLesson(args.id, true);
     await harvestSafely(supabaseLexiconStore(), args.language, enrichment);
   } catch (err) {
@@ -232,6 +248,8 @@ export async function finishRerun(args: { id: string; text: string; language: La
     });
     await saveEnrichment(args.id, args.model, enrichment);
     await db().from("sessions").update({ status: "ready", error: null }).eq("id", args.id);
+    // A re-run may use another help level, so this lesson is no longer the one its key promised.
+    await unshareLesson(args.id);
     await notifyLesson(args.id, true);
     await harvestSafely(supabaseLexiconStore(), args.language, enrichment);
   } catch (err) {
