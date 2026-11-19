@@ -2,6 +2,8 @@
 
 import { allFarsiIdioms, allFarsiVerbs, allFarsiWords } from "@/lib/enrichment/flatten";
 import type { FarsiEnrichment, FarsiIdiom, FarsiVerb, FarsiWord } from "@/lib/enrichment/farsi-schema";
+import { lessonPatterns } from "@/lib/patterns";
+import { KnownPatterns, NewPatterns, PatternTags } from "./PatternCard";
 import { Pager } from "./Pager";
 import { SaveAllButton } from "./SaveAllButton";
 import { SaveWordButton } from "./SaveWordButton";
@@ -20,8 +22,19 @@ function Empty({ what }: { what: string }) {
   return <p className="muted">No {what} found in this text.</p>;
 }
 
-export function FarsiLesson({ e, tab, sessionId }: { e: FarsiEnrichment; tab: FarsiTab; sessionId: string }) {
-  if (tab === "read") return <Reader e={e} sessionId={sessionId} />;
+export function FarsiLesson({
+  e,
+  tab,
+  sessionId,
+  seenPatterns,
+}: {
+  e: FarsiEnrichment;
+  tab: FarsiTab;
+  sessionId: string;
+  /** Pattern ids this person has already been shown. */
+  seenPatterns: string[];
+}) {
+  if (tab === "read") return <Reader e={e} sessionId={sessionId} seenPatterns={seenPatterns} />;
   if (tab === "vocab") {
     const words = allFarsiWords(e);
     return (
@@ -35,7 +48,8 @@ export function FarsiLesson({ e, tab, sessionId }: { e: FarsiEnrichment; tab: Fa
   return <VerbList items={allFarsiVerbs(e)} />;
 }
 
-function Reader({ e, sessionId }: { e: FarsiEnrichment; sessionId: string }) {
+function Reader({ e, sessionId, seenPatterns }: { e: FarsiEnrichment; sessionId: string; seenPatterns: string[] }) {
+  const patterns = lessonPatterns(e.paragraphs);
   const pages = e.paragraphs.map((p, i) => (
     <div key={i} className="stack">
       <div className="card stack">
@@ -53,6 +67,8 @@ function Reader({ e, sessionId }: { e: FarsiEnrichment; sessionId: string }) {
         <div className="translit">{p.key_phrase.transliteration}</div>
         <div className="muted">{p.key_phrase.english}</div>
       </div>
+
+      <PatternTags uses={p.patterns} />
 
       {p.words.length > 0 && (
         <div className="stack">
@@ -83,7 +99,9 @@ function Reader({ e, sessionId }: { e: FarsiEnrichment; sessionId: string }) {
   return (
     <div className="stack">
       <div className="card">{e.summary}</div>
+      <NewPatterns patterns={patterns} seen={seenPatterns} />
       <Pager pages={pages} label="Paragraph" />
+      <KnownPatterns patterns={patterns} seen={seenPatterns} />
       {e.grammar_notes.length > 0 && (
         <div className="card stack">
           <div className="lead">Grammar notes</div>

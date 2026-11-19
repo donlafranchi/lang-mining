@@ -5,6 +5,7 @@ import {
   LEVELS,
   MAX_FRAGMENT_CHARS,
   parseWith,
+  patternUseSchema,
   type ParseResult,
 } from "./schema";
 
@@ -83,6 +84,8 @@ const paragraphResultSchema = z.object({
   words: z.array(wordSchema).max(80),
   verbs: z.array(verbSchema).max(10),
   idioms: z.array(idiomSchema).max(6),
+  // Older lessons were built without patterns, so they read as none.
+  patterns: z.array(patternUseSchema).max(8).default([]),
 });
 
 export const farsiBatchResultSchema = z.object({

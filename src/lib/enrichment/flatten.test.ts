@@ -116,6 +116,7 @@ describe("flatten (Farsi)", () => {
     words: [],
     verbs: [],
     idioms: [],
+    patterns: [],
     ...over,
   });
   const lesson = (paragraphs: FarsiEnrichment["paragraphs"]): FarsiEnrichment => ({

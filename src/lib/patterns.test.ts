@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { lessonPatterns, patternById, patternPromptLines, SPANISH_PATTERNS } from "./patterns";
+import { LANGUAGES } from "./languages";
+import { lessonPatterns, patternById, patternPromptLines, patternsFor } from "./patterns";
+
+const ALL = LANGUAGES.flatMap((l) => patternsFor(l.id));
 
 describe("pattern catalog", () => {
   it("has unique ids and complete teaching for every pattern", () => {
-    expect(new Set(SPANISH_PATTERNS.map((p) => p.id)).size).toBe(SPANISH_PATTERNS.length);
-    for (const p of SPANISH_PATTERNS) {
+    expect(new Set(ALL.map((p) => p.id)).size).toBe(ALL.length);
+    for (const p of ALL) {
       expect(p.title && p.build && p.explanation && p.hint).toBeTruthy();
       expect(p.examples.length).toBeGreaterThanOrEqual(3);
-      for (const x of p.examples) expect(x.spanish && x.english).toBeTruthy();
+      for (const x of p.examples) expect(x.text && x.english).toBeTruthy();
     }
   });
 
@@ -17,9 +20,18 @@ describe("pattern catalog", () => {
     expect(p.examples.length).toBeGreaterThanOrEqual(5);
   });
 
-  it("lists every id for the model", () => {
-    const lines = patternPromptLines();
-    for (const p of SPANISH_PATTERNS) expect(lines).toContain(p.id);
+  it("lists every id for the model, per language", () => {
+    for (const l of LANGUAGES) {
+      const lines = patternPromptLines(l.id);
+      for (const p of patternsFor(l.id)) expect(lines).toContain(p.id);
+    }
+  });
+
+  it("gives Farsi examples a transliteration, since the learner cannot read the script yet", () => {
+    for (const p of patternsFor("fa")) {
+      expect(p.id.startsWith("fa_")).toBe(true);
+      for (const x of p.examples) expect(x.translit).toBeTruthy();
+    }
   });
 });
 
