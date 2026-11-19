@@ -68,7 +68,7 @@ const BLOCK_TAGS = new Set([
   "SECTION", "SUMMARY", "TABLE", "TBODY", "TD", "TH", "THEAD", "TR", "UL",
 ]);
 const SKIP_TAGS = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE"]);
-// Stands in for a line break while a paragraph is being gathered. Two or more in a row end the paragraph.
+// Stands in for a line break while a paragraph is being gathered. Each one ends the piece it is in.
 const BREAK = "\u0001";
 
 /**
@@ -82,8 +82,10 @@ function paragraphsFromHtml(html: string): string[] {
   let buffer = "";
 
   const flush = () => {
-    // Two line breaks in a row start a new paragraph. A single one is just a space.
-    for (const piece of buffer.split(new RegExp(`(?:\\s*${BREAK}\\s*){2,}`))) {
+    // Every line break starts a new piece. Lines that are too short to stand alone (an address, a line of a poem) are
+    // joined back to their neighbours when the lesson paragraphs are made, so a single <br> between paragraphs works
+    // without breaking those.
+    for (const piece of buffer.split(new RegExp(`\\s*${BREAK}\\s*`))) {
       const text = piece.replaceAll(BREAK, " ").replace(/\s+/g, " ").trim();
       if (text) paragraphs.push(text);
     }
@@ -93,7 +95,8 @@ function paragraphsFromHtml(html: string): string[] {
   const walk = (node: Node) => {
     for (const child of Array.from(node.childNodes)) {
       if (child.nodeType === 3) {
-        buffer += child.nodeValue ?? "";
+        // A blank line inside a text node is a paragraph break (pages that send plain text in a styled box).
+        buffer += (child.nodeValue ?? "").replace(/\n[ \t]*\n\s*/g, `${BREAK}${BREAK}`);
       } else if (child.nodeType === 1) {
         const tag = (child as Element).tagName;
         if (SKIP_TAGS.has(tag)) continue;

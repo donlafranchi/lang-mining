@@ -1,7 +1,8 @@
 // Paragraphs are split in code so the target-language text shown to the learner is exactly the source,
 // never something the model rewrote.
 
-export const MAX_PARAGRAPH_CHARS = 1200;
+// About 100 words. Longer paragraphs are cut at sentence ends into even pieces, so one study paragraph is never a wall.
+export const MAX_PARAGRAPH_CHARS = 600;
 export const MIN_PARAGRAPH_CHARS = 80;
 export const BATCH_MAX_CHARS = 3000;
 export const BATCH_MAX_PARAGRAPHS = 5;
@@ -15,17 +16,27 @@ export type NumberedParagraph = { n: number; text: string };
 
 function splitLong(paragraph: string): string[] {
   if (paragraph.length <= MAX_PARAGRAPH_CHARS) return [paragraph];
+
+  // Cut at sentence ends into evenly sized pieces, so a 700 character paragraph becomes two of 350, not 600 and 100.
+  let partsLeft = Math.ceil(paragraph.length / MAX_PARAGRAPH_CHARS);
+  let charsLeft = paragraph.length;
+  // Aim for what is left divided by the pieces still to make, so a small tail does not pile up at the end.
+  const target = () => Math.ceil(charsLeft / Math.max(partsLeft, 1));
   const sentences = paragraph.split(/(?<=[.!?…»"”؟])\s+/);
   const pieces: string[] = [];
   let current = "";
   const push = () => {
-    if (current) pieces.push(current);
+    if (current) {
+      pieces.push(current);
+      charsLeft -= current.length + 1;
+      partsLeft -= 1;
+    }
     current = "";
   };
   for (const sentence of sentences) {
     if (sentence.length > MAX_PARAGRAPH_CHARS) {
       push();
-      // A sentence with no stop in 1200 characters: cut at the last space before the limit.
+      // A sentence with no stop in 600 characters: cut at the last space before the limit.
       let rest = sentence;
       while (rest.length > MAX_PARAGRAPH_CHARS) {
         const cut = rest.lastIndexOf(" ", MAX_PARAGRAPH_CHARS);
@@ -36,8 +47,14 @@ function splitLong(paragraph: string): string[] {
       current = rest;
       continue;
     }
-    if (current && current.length + 1 + sentence.length > MAX_PARAGRAPH_CHARS) push();
-    current = current ? `${current} ${sentence}` : sentence;
+    const joined = current ? `${current} ${sentence}` : sentence;
+    // Close the piece when adding this sentence would pass the target by more than leaving it out falls short.
+    if (current && (joined.length > MAX_PARAGRAPH_CHARS || Math.abs(joined.length - target()) > Math.abs(current.length - target()))) {
+      push();
+      current = sentence;
+    } else {
+      current = joined;
+    }
   }
   push();
   return pieces;

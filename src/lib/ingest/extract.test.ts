@@ -78,9 +78,19 @@ describe("extractArticleText keeps the paragraphs", () => {
     expect(paragraphsOf(text)).toEqual(["Los domingos la familia se reúne en la playa para comer y hablar de todo un poco.", P2]);
   });
 
-  it("splits on a double line break inside one block, and treats a single break as a space", () => {
+  it("starts a new paragraph at every line break, so a single <br> between paragraphs works", () => {
     const text = extractArticleText(page(`<div>${P1}<br><br>${P2}<br>${P3}</div>`), "https://example.com/a");
-    expect(paragraphsOf(text)).toEqual([P1, `${P2} ${P3}`]);
+    expect(paragraphsOf(text)).toEqual([P1, P2, P3]);
+  });
+
+  it("splits paragraphs separated by one <br> only", () => {
+    const text = extractArticleText(page(`<div>${P1}<br>${P2}<br>${P3}</div>`), "https://example.com/a");
+    expect(paragraphsOf(text)).toEqual([P1, P2, P3]);
+  });
+
+  it("treats a blank line inside a text block as a paragraph break", () => {
+    const text = extractArticleText(page(`<div>${P1}\n\n${P2}\n\n${P3}</div>`), "https://example.com/a");
+    expect(paragraphsOf(text)).toEqual([P1, P2, P3]);
   });
 
   it("splits on repeated breaks written with spaces and slashes", () => {

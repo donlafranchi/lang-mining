@@ -83,11 +83,11 @@ describe("splitParagraphs", () => {
 
   it("stops adding paragraphs past the article size cap", () => {
     const block = para("texto", MAX_PARAGRAPH_CHARS - 50);
-    const text = Array.from({ length: 80 }, () => block).join("\n\n");
+    const text = Array.from({ length: 150 }, () => block).join("\n\n");
     const out = splitParagraphs(text);
     const total = out.reduce((n, p) => n + p.length, 0);
     expect(total).toBeLessThanOrEqual(MAX_ARTICLE_CHARS);
-    expect(out.length).toBeLessThan(80);
+    expect(out.length).toBeLessThan(150);
   });
 
   it("never returns a paragraph under the minimum unless it is the only one", () => {
@@ -134,5 +134,24 @@ describe("batchParagraphs", () => {
 
   it("returns no batches for no paragraphs", () => {
     expect(batchParagraphs([])).toEqual([]);
+  });
+
+  it("cuts a long paragraph into even pieces at sentence ends, none over the limit", () => {
+    const sentence = (i: number) => `Esta es la oración número ${i} de un párrafo muy largo que habla de la vida en la ciudad.`;
+    const long = Array.from({ length: 16 }, (_, i) => sentence(i + 1)).join(" ");
+    const out = splitParagraphs(long);
+    expect(out.length).toBeGreaterThanOrEqual(3);
+    for (const p of out) {
+      expect(p.length).toBeLessThanOrEqual(MAX_PARAGRAPH_CHARS);
+      expect(p).toMatch(/[.!?]$/);
+    }
+    // Even: the biggest piece is not more than twice the smallest.
+    expect(Math.max(...out.map((p) => p.length))).toBeLessThanOrEqual(2 * Math.min(...out.map((p) => p.length)));
+    expect(out.join(" ")).toBe(long);
+  });
+
+  it("keeps a paragraph of about 100 words whole", () => {
+    const hundred = Array.from({ length: 100 }, () => "casa").join(" ");
+    expect(splitParagraphs(hundred).length).toBe(1);
   });
 });
