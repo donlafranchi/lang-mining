@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { batchLimits, DEFAULT_HELP, helpLabel, HELP_LEVELS, isHelpLevel, resolveHelp } from "./help";
+import { batchLimits, defaultHelp, helpLabel, HELP_LEVELS, isHelpLevel, resolveHelp } from "./help";
 
 describe("help levels", () => {
-  it("lists full, medium and light, full first and the default", () => {
+  it("lists full, medium and light", () => {
     expect(HELP_LEVELS.map((h) => h.id)).toEqual(["full", "medium", "light"]);
-    expect(DEFAULT_HELP).toBe("full");
+  });
+
+  it("defaults to light for Spanish, which keeps today's lessons, and full for Farsi", () => {
+    expect(defaultHelp("es")).toBe("light");
+    expect(defaultHelp("fa")).toBe("full");
   });
 
   it.each(["full", "medium", "light"])("accepts %s", (v) => {
@@ -15,10 +19,17 @@ describe("help levels", () => {
     expect(isHelpLevel(v)).toBe(false);
   });
 
-  it("falls back to full for anything unknown", () => {
-    expect(resolveHelp(undefined)).toBe("full");
-    expect(resolveHelp("nope")).toBe("full");
-    expect(resolveHelp("light")).toBe("light");
+  it("falls back to the language's default for anything missing or unknown", () => {
+    expect(resolveHelp(undefined, "fa")).toBe("full");
+    expect(resolveHelp("nope", "fa")).toBe("full");
+    expect(resolveHelp(undefined, "es")).toBe("light");
+    expect(resolveHelp("nope", "es")).toBe("light");
+  });
+
+  it("uses a valid level for either language", () => {
+    expect(resolveHelp("full", "es")).toBe("full");
+    expect(resolveHelp("medium", "fa")).toBe("medium");
+    expect(resolveHelp("light", "fa")).toBe("light");
   });
 
   it("has a readable label for each level", () => {
@@ -34,10 +45,16 @@ describe("batchLimits", () => {
     expect(batchLimits("fa", "full").maxChars).toBeLessThan(batchLimits("fa", "light").maxChars);
   });
 
-  it("leaves Spanish batches alone at every level", () => {
-    const base = batchLimits("es", "full");
-    expect(base).toEqual({ maxParagraphs: 5, maxChars: 3000 });
-    expect(batchLimits("es", "light")).toEqual(base);
-    expect(batchLimits("es", "medium")).toEqual(base);
+  it("makes Spanish batches smaller as help goes up, with light unchanged from before", () => {
+    expect(batchLimits("es", "light")).toEqual({ maxParagraphs: 5, maxChars: 3000 });
+    expect(batchLimits("es", "medium").maxParagraphs).toBe(4);
+    expect(batchLimits("es", "full").maxParagraphs).toBe(3);
+    expect(batchLimits("es", "full").maxChars).toBeLessThan(batchLimits("es", "light").maxChars);
+  });
+
+  it("keeps Farsi batches unchanged", () => {
+    expect(batchLimits("fa", "full")).toEqual({ maxParagraphs: 2, maxChars: 1200 });
+    expect(batchLimits("fa", "medium")).toEqual({ maxParagraphs: 3, maxChars: 2000 });
+    expect(batchLimits("fa", "light")).toEqual({ maxParagraphs: 5, maxChars: 3000 });
   });
 });

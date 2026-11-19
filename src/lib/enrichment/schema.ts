@@ -25,14 +25,15 @@ export const LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
 // Short examples (vocab example fragments, idiom phrases) stay short. Full paragraphs are stored
 // since the transient-source hard rule was dropped (Nov 2026), see docs/tickets/006.
 export const MAX_FRAGMENT_CHARS = 140;
-const fragment = z.string().min(1).max(MAX_FRAGMENT_CHARS);
+// Full and medium help leave the vocab example empty, since the paragraph is right above the word.
+const exampleFragment = z.string().max(MAX_FRAGMENT_CHARS);
 
 const vocabSchema = z.object({
   lemma: z.string().min(1),
   surface_form: z.string().min(1),
   part_of_speech: z.string().min(1),
   english: z.string().min(1),
-  example_fragment: fragment,
+  example_fragment: exampleFragment,
   level: z.enum(LEVELS),
 });
 

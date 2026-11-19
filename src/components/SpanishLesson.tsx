@@ -88,26 +88,28 @@ function Tags({ items }: { items: string[] }) {
   );
 }
 
+/** One line per word so a long list is quick to scan, with a save button on each. */
 function VocabList({ items, sessionId }: { items: Vocab[]; sessionId: string }) {
   if (items.length === 0) return <Empty what="vocabulary" />;
   return (
-    <div className="stack">
+    <div className="word-list">
       {items.map((v, i) => (
-        <details key={i} className="item">
-          <summary>
-            <span>
-              <span className="lead">{v.lemma}</span> · {v.english}
-            </span>
-            <span className="pill">{v.level}</span>
-          </summary>
-          <div className="body">
-            <div className="muted">
-              {v.surface_form} · {v.part_of_speech}
+        <div key={i} className="word-row">
+          <div className="word-main">
+            <div>
+              <span className="lead">{v.lemma}</span>
+              {v.surface_form.toLowerCase() !== v.lemma.toLowerCase() && (
+                <span className="muted"> (as written {v.surface_form})</span>
+              )}{" "}
+              · {v.english}
             </div>
-            <div>“{v.example_fragment}”</div>
-            <SaveWordButton word={v} language="es" sessionId={sessionId} />
+            <div className="muted">
+              {v.part_of_speech} · {v.level}
+              {v.example_fragment ? ` · “${v.example_fragment}”` : ""}
+            </div>
           </div>
-        </details>
+          <SaveWordButton word={v} language="es" sessionId={sessionId} compact />
+        </div>
       ))}
     </div>
   );
