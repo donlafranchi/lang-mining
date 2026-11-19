@@ -225,12 +225,24 @@ describe("output cut off by the token limit", () => {
     expect(last.content).toMatch(/\[1\]/);
   });
 
-  it("gives a clear error when it is cut off twice", async () => {
+  it("gives a clear error when even one paragraph is cut off twice", async () => {
     const complete = vi.fn<CompleteFn>().mockRejectedValue(new OutputTruncatedError());
-    const error = await enrichText({ text: article(2), complete }).catch((e) => e);
+    const error = await enrichText({ text: article(1), complete }).catch((e) => e);
     expect(error).toBeInstanceOf(EnrichmentError);
     expect(error.message).toMatch(/too long/i);
     expect(complete).toHaveBeenCalledTimes(2);
+  });
+
+  it("splits a batch that is cut off twice and builds the lesson from the halves", async () => {
+    const good = fakeModel();
+    // Any call that asks for more than one paragraph is cut off. One paragraph at a time works.
+    const complete = vi.fn<CompleteFn>(async (a) => {
+      if ((a.messages[0].content.match(/^\[\d+\]/gm) ?? []).length > 1) throw new OutputTruncatedError();
+      return good(a);
+    });
+    const result = (await enrichText({ text: article(4), help: "light", complete })) as Enrichment;
+    expect(result.paragraphs).toHaveLength(4);
+    expect(result.paragraphs.map((p) => p.spanish)).toEqual([1, 2, 3, 4].map(para));
   });
 
   it("applies to Farsi too", async () => {
