@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { splitParagraphs } from "../enrichment/paragraphs";
 import { extractArticleText, looksLikeUrl, validateArticleUrl } from "./extract";
 
 const html = `<!doctype html>
@@ -34,6 +35,106 @@ describe("extractArticleText", () => {
     expect(() =>
       extractArticleText("<html><body></body></html>", "https://example.com/empty"),
     ).toThrow(/no readable text/i);
+  });
+});
+
+// Most real sites ship their HTML minified, with nothing between the tags. The paragraph breaks have to come from the
+// tags themselves, not from whitespace in the source.
+const P1 = "Los domingos la familia se reúne en la playa para comer y hablar de todo un poco, como siempre.";
+const P2 = "Mi abuela siempre dice que hay que disfrutar el momento, porque la vida es corta y el tiempo vuela.";
+const P3 = "Después del almuerzo, los niños juegan en la arena mientras los mayores escuchan música de fondo.";
+const page = (body: string) =>
+  `<!doctype html><html><head><title>Una página</title></head><body><nav><a href="/">Inicio</a></nav><article>${body}</article><footer>© 2026</footer></body></html>`;
+const paragraphsOf = (text: string) => text.split("\n\n");
+
+describe("extractArticleText keeps the paragraphs", () => {
+  it("separates paragraphs even when the HTML has nothing between the tags", () => {
+    const text = extractArticleText(page(`<h2>Un título distinto</h2><p>${P1}</p><p>${P2}</p><p>${P3}</p>`), "https://example.com/a");
+    expect(paragraphsOf(text)).toEqual(["Un título distinto", P1, P2, P3]);
+  });
+
+  it("so the paragraph splitter finds the same paragraphs the page has", () => {
+    const text = extractArticleText(page(`<p>${P1}</p><p>${P2}</p><p>${P3}</p>`), "https://example.com/a");
+    expect(splitParagraphs(text)).toEqual([P1, P2, P3]);
+  });
+
+  it("does not turn a whole minified article into one paragraph", () => {
+    const many = Array.from({ length: 12 }, (_, i) => `<p>${P1} (${i + 1})</p>`).join("");
+    const text = extractArticleText(page(many), "https://example.com/a");
+    expect(splitParagraphs(text)).toHaveLength(12);
+  });
+
+  it("makes each list item its own paragraph", () => {
+    const text = extractArticleText(
+      page(`<p>${P1}</p><ul><li>${P2}</li><li>${P3}</li></ul>`),
+      "https://example.com/a",
+    );
+    expect(paragraphsOf(text)).toEqual([P1, P2, P3]);
+  });
+
+  it("keeps a paragraph whole when it has links and emphasis inside", () => {
+    const inline = 'Los domingos la <a href="/x">familia</a> se reúne en la <strong>playa</strong> para comer y <em>hablar</em> de <span>todo</span> un poco.';
+    const text = extractArticleText(page(`<p>${inline}</p><p>${P2}</p>`), "https://example.com/a");
+    expect(paragraphsOf(text)).toEqual(["Los domingos la familia se reúne en la playa para comer y hablar de todo un poco.", P2]);
+  });
+
+  it("splits on a double line break inside one block, and treats a single break as a space", () => {
+    const text = extractArticleText(page(`<div>${P1}<br><br>${P2}<br>${P3}</div>`), "https://example.com/a");
+    expect(paragraphsOf(text)).toEqual([P1, `${P2} ${P3}`]);
+  });
+
+  it("splits on repeated breaks written with spaces and slashes", () => {
+    const text = extractArticleText(page(`<div>${P1}<br/> <br />${P2}</div>`), "https://example.com/a");
+    expect(paragraphsOf(text)).toEqual([P1, P2]);
+  });
+
+  it("does not repeat a quote that wraps its own paragraphs", () => {
+    const text = extractArticleText(page(`<p>${P1}</p><blockquote><p>${P2}</p></blockquote><p>${P3}</p>`), "https://example.com/a");
+    expect(paragraphsOf(text)).toEqual([P1, P2, P3]);
+    expect(text.split(P2)).toHaveLength(2);
+  });
+
+  it("keeps loose text that sits beside a nested block", () => {
+    const text = extractArticleText(page(`<div>${P1}<div>${P2}</div>${P3}</div>`), "https://example.com/a");
+    expect(paragraphsOf(text)).toEqual([P1, P2, P3]);
+  });
+
+  it("keeps a figure caption as its own paragraph", () => {
+    const text = extractArticleText(page(`<p>${P1}</p><figure><img src="a.jpg"/><figcaption>${P2}</figcaption></figure><p>${P3}</p>`), "https://example.com/a");
+    expect(paragraphsOf(text)).toContain(P2);
+  });
+
+  it("collapses source whitespace and line breaks inside a paragraph, and decodes entities", () => {
+    const text = extractArticleText(
+      page(`<p>Los domingos   la familia\n se reúne en la playa &amp; hablan&nbsp;de todo un poco, como siempre sucede.</p><p>${P2}</p>`),
+      "https://example.com/a",
+    );
+    const [first] = paragraphsOf(text);
+    expect(first).toBe("Los domingos la familia se reúne en la playa & hablan de todo un poco, como siempre sucede.");
+    expect(first).not.toMatch(/\n/);
+  });
+
+  it("has no blank paragraphs, no stray line breaks at the ends, and never more than one blank line", () => {
+    const text = extractArticleText(page(`<p>${P1}</p><p>  </p><p></p><p>&nbsp;</p><p>${P2}</p>`), "https://example.com/a");
+    expect(text).toBe(`${P1}\n\n${P2}`);
+    expect(text).not.toMatch(/\n\n\n/);
+  });
+
+  it("leaves script and style text out", () => {
+    const text = extractArticleText(page(`<p>${P1}</p><script>var secret = "tracking";</script><style>.a{color:red}</style><p>${P2}</p>`), "https://example.com/a");
+    expect(text).not.toMatch(/tracking|color:red/);
+  });
+
+  it("keeps Persian paragraphs, and the zero-width joiners inside their words", () => {
+    const fa1 = "فردا با دوستانم به پارک می‌روم و بعد از ظهر کتاب می‌خوانم، چون هوا خیلی خوب است.";
+    const fa2 = "مادربزرگم همیشه می‌گوید که باید از هر لحظه لذت برد، زیرا زندگی کوتاه است و زمان زود می‌گذرد.";
+    const text = extractArticleText(page(`<p>${fa1}</p><p>${fa2}</p>`), "https://example.com/fa");
+    expect(paragraphsOf(text)).toEqual([fa1, fa2]);
+    expect(text).toContain("می‌روم");
+  });
+
+  it("still throws a readable error when there is nothing to read", () => {
+    expect(() => extractArticleText(page("<p> </p>"), "https://example.com/a")).toThrow(/no readable text/i);
   });
 });
 

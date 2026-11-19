@@ -19,3 +19,12 @@ export function explainDeckError(message: string): string | null {
   }
   return null;
 }
+
+/** Accounts need migration 0005. Says so when its table or column is missing, otherwise returns null. */
+export function explainUsersError(message: string): string | null {
+  const missing = /(does not exist|schema cache|could not find)/i.test(message);
+  if (missing && (/app_users/i.test(message) || /'user_id' column/i.test(message) || /column "?user_id"?/i.test(message))) {
+    return "Accounts need a one-time database update. Run supabase/migrations/0005_users.sql in the Supabase SQL Editor, then try again.";
+  }
+  return null;
+}

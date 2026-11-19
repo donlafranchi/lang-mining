@@ -5,14 +5,17 @@ import { PasteForm } from "@/components/PasteForm";
 import { deckSummary } from "@/lib/deck";
 import { listSessions, type SessionRow } from "@/lib/sessions";
 import { effectiveStatus } from "@/lib/status";
+import { UserBar } from "@/components/UserBar";
+import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
+  const user = await requireUser();
   let sessions: SessionRow[] = [];
   let setupError = "";
   try {
-    sessions = await listSessions();
+    sessions = await listSessions(user.id);
   } catch (err) {
     setupError = err instanceof Error ? err.message : "Could not load recent sessions.";
   }
@@ -20,12 +23,14 @@ export default async function Home() {
   // The deck needs migration 0004. Without it the home page still works, just without the deck links.
   let deck: { total: number; due: number } | null = null;
   try {
-    const [es, fa] = await Promise.all([deckSummary("es"), deckSummary("fa")]);
+    const [es, fa] = await Promise.all([deckSummary(user.id, "es"), deckSummary(user.id, "fa")]);
     deck = { total: es.total + fa.total, due: es.due + fa.due };
   } catch {}
 
   return (
     <main className="shell">
+      <UserBar name={user.name} isAdmin={user.isAdmin} />
+
       <div className="brand">
         <h1>lang-mining</h1>
       </div>

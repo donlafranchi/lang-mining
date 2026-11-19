@@ -1,5 +1,5 @@
 import { createAnthropicComplete } from "./anthropic";
-import { explainSaveError } from "./db-errors";
+import { explainSaveError, explainUsersError } from "./db-errors";
 import { enrichText, type Lesson } from "./enrichment/enrich";
 import { farsiEnrichmentSchema } from "./enrichment/farsi-schema";
 import { enrichmentSchema, type Dialect } from "./enrichment/schema";
@@ -68,7 +68,11 @@ async function saveEnrichment(sessionId: string, model: ModelId, data: Lesson) {
 }
 
 /** Paste text or a URL. Saves the session and source text and returns at once; call buildSession in the background to make the lesson. */
-export async function createSession(args: { input: string; language: Language }): Promise<{ id: string; text: string }> {
+export async function createSession(args: {
+  input: string;
+  language: Language;
+  userId: string;
+}): Promise<{ id: string; text: string }> {
   const input = args.input.trim();
   if (!input) throw new UserFacingError("Paste some text or a link first.");
 
@@ -91,6 +95,7 @@ export async function createSession(args: { input: string; language: Language })
   const { data: session, error: sessionError } = await db()
     .from("sessions")
     .insert({
+      user_id: args.userId,
       source_type: isUrl ? "url" : "text",
       source_url: sourceUrl,
       title: titleFor(text, sourceUrl),
@@ -103,7 +108,7 @@ export async function createSession(args: { input: string; language: Language })
     .single();
   if (sessionError || !session) {
     const message = sessionError?.message ?? "no row returned";
-    const explained = explainSaveError(message);
+    const explained = explainSaveError(message) ?? explainUsersError(message);
     if (explained) throw new UserFacingError(explained, 503);
     throw new Error(`Could not create the session: ${message}`);
   }
@@ -140,14 +145,20 @@ export async function buildSession(args: { id: string; text: string; language: L
   }
 }
 
-/** Reads the stored source text and language for a re-run. Throws a 410 if the source text is missing. */
-export async function startRerun(id: string): Promise<{ text: string; language: Language }> {
-  const [{ data: source, error }, { data: session }] = await Promise.all([
-    db().from("source_texts").select("text").eq("session_id", id).maybeSingle(),
-    db().from("sessions").select("*").eq("id", id).maybeSingle(),
-  ]);
-  if (error) throw new Error(`Could not read the source text: ${error.message}`);
+/** Reads the stored source text and language for a re-run. Someone else's lesson is "not found". Throws a 410 if the source text is missing. */
+export async function startRerun(id: string, userId: string): Promise<{ text: string; language: Language }> {
+  // Check the owner first, so nothing about another person's lesson is read.
+  const { data: session, error: sessionError } = await db()
+    .from("sessions")
+    .select("*")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (sessionError) throw new Error(`Could not load the lesson: ${sessionError.message}`);
   if (!session) throw new UserFacingError("That lesson is already gone.", 404);
+
+  const { data: source, error } = await db().from("source_texts").select("text").eq("session_id", id).maybeSingle();
+  if (error) throw new Error(`Could not read the source text: ${error.message}`);
   if (!source) {
     throw new UserFacingError(
       "The source text for this lesson is not available. Paste it again to build a new lesson.",
@@ -174,16 +185,17 @@ export async function finishRerun(args: { id: string; text: string; language: La
 }
 
 /** Deletes a lesson. The source text and enrichment rows go with it (foreign keys cascade). */
-export async function deleteSession(id: string): Promise<void> {
-  const { data, error } = await db().from("sessions").delete().eq("id", id).select("id");
+export async function deleteSession(id: string, userId: string): Promise<void> {
+  const { data, error } = await db().from("sessions").delete().eq("id", id).eq("user_id", userId).select("id");
   if (error) throw new Error(`Could not delete the lesson: ${error.message}`);
   if (!data || data.length === 0) throw new UserFacingError("That lesson is already gone.", 404);
 }
 
-export async function listSessions(limit = 20): Promise<SessionRow[]> {
+export async function listSessions(userId: string, limit = 20): Promise<SessionRow[]> {
   const { data, error } = await db()
     .from("sessions")
     .select("*")
+    .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw new Error(`Could not list sessions: ${error.message}`);
@@ -197,11 +209,12 @@ export type SessionDetail = {
   sourceAvailable: boolean;
 };
 
-export async function getSession(id: string): Promise<SessionDetail | null> {
+export async function getSession(id: string, userId: string): Promise<SessionDetail | null> {
   const { data: session, error } = await db()
     .from("sessions")
     .select("*")
     .eq("id", id)
+    .eq("user_id", userId)
     .maybeSingle();
   if (error) throw new Error(`Could not load the session: ${error.message}`);
   if (!session) return null;

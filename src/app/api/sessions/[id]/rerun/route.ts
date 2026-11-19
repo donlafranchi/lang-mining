@@ -3,11 +3,15 @@ import { after } from "next/server";
 import { isHelpLevel, resolveHelp } from "@/lib/help";
 import { isModel, resolveModel } from "@/lib/models";
 import { finishRerun, startRerun, UserFacingError } from "@/lib/sessions";
+import { currentUser, unauthorized } from "@/lib/auth";
 
 // The lesson builds after the response is sent, so this is the ceiling for that build.
 export const maxDuration = 300;
 
 export async function POST(request: Request, ctx: RouteContext<"/api/sessions/[id]/rerun">) {
+  const user = await currentUser();
+  if (!user) return unauthorized();
+
   const { id } = await ctx.params;
   const body = (await request.json().catch(() => ({}))) as { help?: unknown; model?: unknown };
   if (body.help !== undefined && !isHelpLevel(body.help)) {
@@ -19,7 +23,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/sessions/[i
   const model = resolveModel(body.model);
 
   try {
-    const { text, language } = await startRerun(id);
+    const { text, language } = await startRerun(id, user.id);
     // The default level depends on the session's language, so it is resolved once that is known.
     const help = resolveHelp(body.help, language);
     after(() => finishRerun({ id, text, language, help, model }));

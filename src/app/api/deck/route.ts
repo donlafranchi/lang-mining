@@ -5,8 +5,12 @@ import { parseDeckPayload, type DeckPayload } from "@/lib/deck-payload";
 import { isUuid } from "@/lib/ids";
 import { isLanguage } from "@/lib/languages";
 import { UserFacingError } from "@/lib/sessions";
+import { currentUser, unauthorized } from "@/lib/auth";
 
 export async function POST(request: Request) {
+  const user = await currentUser();
+  if (!user) return unauthorized();
+
   const body = (await request.json().catch(() => ({}))) as { language?: unknown; payload?: unknown; payloads?: unknown; sessionId?: unknown };
   if (!isLanguage(body.language)) {
     return NextResponse.json({ error: "Pick Spanish or Farsi." }, { status: 400 });
@@ -25,7 +29,7 @@ export async function POST(request: Request) {
       payloads.push(parsed.data);
     }
     try {
-      const { created, total } = await addManyToDeck({ language: body.language, payloads, sessionId });
+      const { created, total } = await addManyToDeck({ language: body.language, payloads, sessionId, userId: user.id });
       return NextResponse.json({ ok: true, created, total });
     } catch (err) {
       if (err instanceof UserFacingError) {
@@ -40,7 +44,7 @@ export async function POST(request: Request) {
   if (!payload.ok) return NextResponse.json({ error: payload.error }, { status: 400 });
 
   try {
-    const { created } = await addToDeck({ language: body.language, payload: payload.data, sessionId });
+    const { created } = await addToDeck({ language: body.language, payload: payload.data, sessionId, userId: user.id });
     return NextResponse.json({ ok: true, created });
   } catch (err) {
     if (err instanceof UserFacingError) {
