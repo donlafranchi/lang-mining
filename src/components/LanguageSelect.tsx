@@ -2,21 +2,27 @@
 
 import { LANGUAGES, type Language } from "@/lib/languages";
 
+/** Big buttons to flip between languages, instead of a dropdown. */
 export function LanguageSelect(props: { value: Language; onChange: (value: Language) => void; disabled?: boolean }) {
   return (
-    <label className="field">
-      Language
-      <select
-        value={props.value}
-        onChange={(e) => props.onChange(e.target.value as Language)}
-        disabled={props.disabled}
-      >
+    <div className="stack">
+      <div className="field-label" id="language-label">
+        Language
+      </div>
+      <div className="tabs lang-tabs" role="tablist" aria-labelledby="language-label">
         {LANGUAGES.map((l) => (
-          <option key={l.id} value={l.id}>
+          <button
+            key={l.id}
+            type="button"
+            role="tab"
+            aria-selected={props.value === l.id}
+            onClick={() => props.onChange(l.id)}
+            disabled={props.disabled}
+          >
             {l.label}
-          </option>
+          </button>
         ))}
-      </select>
-    </label>
+      </div>
+    </div>
   );
 }

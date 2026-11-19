@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { PatternCard } from "@/components/PatternCard";
 import { requireUser } from "@/lib/auth";
-import { LANGUAGES, resolveLanguage } from "@/lib/languages";
+import { LANGUAGES } from "@/lib/languages";
+import { preferredLanguage } from "@/lib/language-pref";
 import { listSeenPatterns } from "@/lib/pattern-seen";
 import { patternsFor } from "@/lib/patterns";
 
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function PatternsPage(props: PageProps<"/study/patterns">) {
   const user = await requireUser();
   const sp = await props.searchParams;
-  const language = resolveLanguage(Array.isArray(sp.language) ? sp.language[0] : sp.language);
+  const language = await preferredLanguage(sp.language);
   const seen = await listSeenPatterns(user.id).catch((): string[] => []);
   return (
     <main className="shell">

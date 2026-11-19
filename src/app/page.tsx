@@ -7,6 +7,7 @@ import { listSessions, type SessionRow } from "@/lib/sessions";
 import { effectiveStatus } from "@/lib/status";
 import { UserBar } from "@/components/UserBar";
 import { requireUser } from "@/lib/auth";
+import { preferredLanguage } from "@/lib/language-pref";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +38,7 @@ export default async function Home() {
 
       <InstallHint />
 
-      <PasteForm helps={user.help} />
+      <PasteForm helps={user.help} initialLanguage={await preferredLanguage()} />
 
       {deck && (
         <nav className="deck-links" aria-label="Study">

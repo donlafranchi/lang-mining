@@ -4,14 +4,15 @@ import { SaveWordButton } from "@/components/SaveWordButton";
 import { requireUser } from "@/lib/auth";
 import { coreProgress, coreToPayload, coreWords } from "@/lib/core";
 import { listDeckKeys } from "@/lib/deck";
-import { LANGUAGES, resolveLanguage } from "@/lib/languages";
+import { LANGUAGES } from "@/lib/languages";
+import { preferredLanguage } from "@/lib/language-pref";
 
 export const dynamic = "force-dynamic";
 
 export default async function CorePage(props: PageProps<"/study/core">) {
   const user = await requireUser();
   const sp = await props.searchParams;
-  const language = resolveLanguage(Array.isArray(sp.language) ? sp.language[0] : sp.language);
+  const language = await preferredLanguage(sp.language);
 
   let keys = new Set<string>();
   let setupError = "";

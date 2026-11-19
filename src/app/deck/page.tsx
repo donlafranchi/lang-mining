@@ -2,7 +2,8 @@ import Link from "next/link";
 import { RemoveCardButton } from "@/components/RemoveCardButton";
 import { deckSummary, listDeck, type DeckItem, type DeckSummary } from "@/lib/deck";
 import { isDue } from "@/lib/srs";
-import { LANGUAGES, resolveLanguage } from "@/lib/languages";
+import { LANGUAGES } from "@/lib/languages";
+import { preferredLanguage } from "@/lib/language-pref";
 import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function DeckPage(props: PageProps<"/deck">) {
   const user = await requireUser();
   const sp = await props.searchParams;
-  const language = resolveLanguage(Array.isArray(sp.language) ? sp.language[0] : sp.language);
+  const language = await preferredLanguage(sp.language);
 
   let items: DeckItem[] = [];
   let summary: DeckSummary = { total: 0, due: 0 };

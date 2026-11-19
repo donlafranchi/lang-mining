@@ -388,7 +388,8 @@ a.back {
   position: static;
 }
 
-.lang-tabs a {
+.lang-tabs a,
+.lang-tabs button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -400,7 +401,8 @@ a.back {
   font-size: 0.9rem;
 }
 
-.lang-tabs a[aria-selected="true"] {
+.lang-tabs a[aria-selected="true"],
+.lang-tabs button[aria-selected="true"] {
   background: var(--accent);
   color: var(--accent-ink);
   border-color: var(--accent);
@@ -554,4 +556,9 @@ a.btn {
   text-decoration-color: var(--accent);
   text-decoration-thickness: 2px;
   text-underline-offset: 4px;
+}
+
+.field-label {
+  font-size: 0.85rem;
+  color: var(--muted);
 }
