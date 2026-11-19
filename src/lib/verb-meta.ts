@@ -1,4 +1,4 @@
-// The small tags under a verb: what kind of form it is, who it is for, and whether it is irregular. The model words
+// The small tags under a verb: what kind of form it is and who it is for. (Irregular has its own pill.) The model words
 // these its own way ("present progressive (gerund)", person "none"), so they are tidied here.
 
 type VerbMeta = { tense: string; mood: string; person: string; irregular: boolean };
@@ -16,6 +16,5 @@ export function verbTags(v: VerbMeta): string[] {
     tags.push(ordinary ? v.tense : `${v.tense} ${v.mood}`);
     if (!EMPTY.has(v.person.trim().toLowerCase())) tags.push(v.person);
   }
-  if (v.irregular) tags.push("irregular");
   return tags;
 }
