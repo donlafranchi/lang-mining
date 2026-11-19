@@ -7,7 +7,7 @@
 //
 // Bump VERSION to drop every cache from older versions.
 
-const VERSION = "v2";
+const VERSION = "v3";
 const STATIC_CACHE = `static-${VERSION}`;
 const OFFLINE_URL = "/offline";
 const PRECACHE = [OFFLINE_URL, "/icons/icon-192.png", "/icons/icon-512.png"];
@@ -105,12 +105,17 @@ self.addEventListener("push", (event) => {
     data = {};
   }
   const title = data.title || "Lesson ready";
+  // The red number on the app icon: one per notification that has not been opened yet.
+  const badge = self.navigator && self.navigator.setAppBadge ? self.navigator.setAppBadge(1).catch(() => undefined) : Promise.resolve();
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body: data.body || "",
-      icon: "/icons/icon-192.png",
-      data: { url: data.url || "/" },
-    }),
+    Promise.all([
+      self.registration.showNotification(title, {
+        body: data.body || "",
+        icon: "/icons/icon-192.png",
+        data: { url: data.url || "/" },
+      }),
+      badge,
+    ]),
   );
 });
 
