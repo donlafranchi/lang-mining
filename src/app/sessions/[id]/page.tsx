@@ -74,6 +74,11 @@ export default async function SessionPage(props: PageProps<"/sessions/[id]">) {
         coreRanks={coreRanks}
         coreForms={coreForms}
       />
+      {user.isAdmin && detail.session.source_type === "url" && (
+        <p className="muted">
+          <a href={`/api/admin/source-html?id=${detail.session.id}`}>Download the page HTML</a> (owner only, for fixing extra text)
+        </p>
+      )}
       <div className="danger-zone">
         <DeleteButton id={detail.session.id} redirectTo="/" label="Delete this lesson" />
       </div>

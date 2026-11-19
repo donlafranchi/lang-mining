@@ -216,6 +216,37 @@ describe("cleanParagraphs", () => {
     ]);
   });
 
+  it("drops reading times, bylines and publish dates that are not part of the article", () => {
+    const junk = [
+      "3 minute read",
+      "3 min read",
+      "5 min. de lectura",
+      "5 minutos de lectura",
+      "Tiempo de lectura: 4 min",
+      "Lectura: 2 minutos",
+      "Por Juan Pérez",
+      "By Maria Lopez",
+      "Publicado el 3 de marzo de 2026",
+      "Actualizado: 3 mar 2026 10:15",
+      "Updated Nov 19, 2026",
+      "Escucha esta nota",
+      "Advertisement",
+    ];
+    const story = "Mi abuela dice que hay que disfrutar el momento.";
+    expect(cleanParagraphs([...junk, story])).toEqual([story]);
+  });
+
+  it("keeps real sentences that only look similar", () => {
+    const keep = [
+      "Por eso nadie vino a la fiesta de ayer.",
+      "Por Dios, no me digas eso.",
+      "Leyó durante tres minutos antes de dormir cada noche.",
+      "Publicado hace años, el libro sigue vendiéndose en todas las librerías del país.",
+      "Fue un minuto de silencio por las víctimas del accidente.",
+    ];
+    expect(cleanParagraphs(keep)).toEqual(keep);
+  });
+
   it("keeps short headings that are part of the story", () => {
     expect(cleanParagraphs(["El mercado", "Cada mañana abren los puestos de fruta."])).toEqual([
       "El mercado",

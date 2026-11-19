@@ -17,6 +17,9 @@ import { db } from "./supabase";
 
 export const MIN_TEXT_CHARS = 20;
 
+/** The most page HTML kept per lesson. */
+export const MAX_HTML_CHARS = 400_000;
+
 export class UserFacingError extends Error {
   constructor(
     message: string,
@@ -89,6 +92,7 @@ export async function createSession(args: {
   let text = input;
   let sourceUrl: string | null = null;
   let pageTitle = "";
+  let pageHtml: string | null = null;
 
   if (isUrl) {
     try {
@@ -96,6 +100,7 @@ export async function createSession(args: {
       text = fetched.text;
       sourceUrl = fetched.finalUrl;
       pageTitle = fetched.title;
+      pageHtml = fetched.html;
     } catch (err) {
       throw new UserFacingError(err instanceof Error ? err.message : "Could not read that link.");
     }
@@ -133,6 +138,12 @@ export async function createSession(args: {
     const explained = explainSaveError(sourceError.message);
     if (explained) throw new UserFacingError(explained, 503);
     throw new Error(`Could not store the source text: ${sourceError.message}`);
+  }
+
+  // Keep the page as fetched so extraction problems can be studied. Best effort: never blocks the lesson.
+  if (pageHtml) {
+    const { error: htmlError } = await db().from("source_html").insert({ session_id: session.id, html: pageHtml.slice(0, MAX_HTML_CHARS) });
+    if (htmlError) console.error("could not keep the page html", htmlError.message);
   }
 
   // A stand-in title (the start of the text, or the site name) can be replaced by the model's title once the lesson
