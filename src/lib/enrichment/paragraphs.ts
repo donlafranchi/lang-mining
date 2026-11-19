@@ -5,6 +5,9 @@ export const MAX_PARAGRAPH_CHARS = 1200;
 export const MIN_PARAGRAPH_CHARS = 80;
 export const BATCH_MAX_CHARS = 3000;
 export const BATCH_MAX_PARAGRAPHS = 5;
+
+export type BatchLimits = { maxParagraphs: number; maxChars: number };
+export const DEFAULT_BATCH_LIMITS: BatchLimits = { maxParagraphs: BATCH_MAX_PARAGRAPHS, maxChars: BATCH_MAX_CHARS };
 // Cap what we send so a huge page cannot run up a bill. Roughly 12k words.
 export const MAX_ARTICLE_CHARS = 60_000;
 
@@ -12,7 +15,7 @@ export type NumberedParagraph = { n: number; text: string };
 
 function splitLong(paragraph: string): string[] {
   if (paragraph.length <= MAX_PARAGRAPH_CHARS) return [paragraph];
-  const sentences = paragraph.split(/(?<=[.!?…»"”])\s+/);
+  const sentences = paragraph.split(/(?<=[.!?…»"”؟])\s+/);
   const pieces: string[] = [];
   let current = "";
   const push = () => {
@@ -79,12 +82,12 @@ export function splitParagraphs(text: string): string[] {
 }
 
 /** Group paragraphs into calls: a few paragraphs, a few thousand characters. Numbers are 1-based and global. */
-export function batchParagraphs(paragraphs: string[]): NumberedParagraph[][] {
+export function batchParagraphs(paragraphs: string[], limits: BatchLimits = DEFAULT_BATCH_LIMITS): NumberedParagraph[][] {
   const batches: NumberedParagraph[][] = [];
   let current: NumberedParagraph[] = [];
   let chars = 0;
   paragraphs.forEach((text, i) => {
-    const full = current.length >= BATCH_MAX_PARAGRAPHS || (current.length > 0 && chars + text.length > BATCH_MAX_CHARS);
+    const full = current.length >= limits.maxParagraphs || (current.length > 0 && chars + text.length > limits.maxChars);
     if (full) {
       batches.push(current);
       current = [];

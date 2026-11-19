@@ -200,61 +200,157 @@ describe("output cut off by the token limit", () => {
   });
 });
 
-describe("Farsi", () => {
-  const farsiJson = JSON.stringify({
-    summary: "Weekend plans.",
-    segments: [],
-    vocab: [
-      {
-        lemma: "فردا",
-        transliteration: "fardâ",
-        part_of_speech: "adverb",
-        english: "tomorrow",
-        example_fragment: "فردا می‌بینمت",
-        level: "A1",
-        register: "neutral",
-      },
-    ],
-    idioms: [],
-    verbs: [],
+const farsiWord = (n: number, i: number) => ({
+  lemma: `کلمه${n}${i}`,
+  surface: `کلمه${n}${i}`,
+  transliteration: "kalame",
+  part_of_speech: "noun",
+  english: "word",
+  level: "A1",
+  register: "neutral",
+});
+
+const farsiParagraphResult = (n: number) => ({
+  n,
+  transliteration: `transliteration of paragraph ${n}`,
+  english: `English for Farsi paragraph ${n}.`,
+  key_phrase: { persian: "فردا می‌بینمت", transliteration: "fardâ mibinamet", english: "I'll see you tomorrow" },
+  words: [farsiWord(n, 1), farsiWord(n, 2)],
+  verbs: [],
+  idioms: [],
+});
+
+/** A fake Farsi model: answers for exactly the paragraph numbers in the prompt. */
+function fakeFarsiModel(): CompleteFn {
+  return async ({ messages }) => {
+    const numbers = [...messages[0].content.matchAll(/^\[(\d+)\]/gm)].map((m) => Number(m[1]));
+    return JSON.stringify({
+      gist: `Gist of ${numbers.join(",")}.`,
+      paragraphs: numbers.map(farsiParagraphResult),
+      grammar_notes: [],
+    });
+  };
+}
+
+const persianPara = (i: number) =>
+  `بند شماره ${i} از یک متن آزمایشی با متن کافی برای اینکه با بند دیگر ادغام نشود و از حداقل طول بیشتر باشد.`;
+const persianText = (count: number) => Array.from({ length: count }, (_, i) => persianPara(i + 1)).join("\n\n");
+
+describe("Farsi prompts", () => {
+  it("asks for transliteration, register, compound verbs and JSON only, at every level", () => {
+    for (const help of ["full", "medium", "light"] as const) {
+      const prompt = buildSystemPrompt("fa", help);
+      expect(prompt).toMatch(/Persian|Farsi/);
+      expect(prompt).toMatch(/transliteration/);
+      expect(prompt).toMatch(/colloquial/);
+      expect(prompt).toMatch(/compound/);
+      expect(prompt).toMatch(/EVERY paragraph/);
+      expect(prompt).toMatch(/only (a )?json/i);
+      expect(prompt).not.toMatch(/reflexive|tú\/ustedes|Latin American/);
+    }
   });
 
-  it("builds a Farsi prompt that asks for transliteration, register and compound verbs", () => {
-    const prompt = buildSystemPrompt("fa");
-    expect(prompt).toMatch(/Persian|Farsi/);
-    expect(prompt).toMatch(/transliteration/);
-    expect(prompt).toMatch(/colloquial/);
-    expect(prompt).toMatch(/compound/);
-    expect(prompt).toMatch(/only (a )?json/i);
-    expect(prompt).not.toMatch(/reflexive|tú\/ustedes|Latin American/);
+  it("asks for a transliteration and an English translation of every paragraph, not copies of the Persian", () => {
+    const prompt = buildSystemPrompt("fa", "full");
+    expect(prompt).toMatch(/transliteration \(the whole paragraph/);
+    expect(prompt).toMatch(/english \(a faithful English translation/);
+    expect(prompt).toMatch(/Do not copy the Persian paragraphs back/);
+  });
+
+  it("full help glosses every distinct word", () => {
+    expect(buildSystemPrompt("fa", "full")).toMatch(/EVERY distinct word/);
+    expect(buildSystemPrompt("fa", "full")).not.toMatch(/content word/);
+  });
+
+  it("medium help glosses every content word and skips the basic small words", () => {
+    const prompt = buildSystemPrompt("fa", "medium");
+    expect(prompt).toMatch(/every distinct content word/);
+    expect(prompt).toMatch(/skip/i);
+    expect(prompt).not.toMatch(/EVERY distinct word/);
+  });
+
+  it("light help asks for a handful of key words", () => {
+    const prompt = buildSystemPrompt("fa", "light");
+    expect(prompt).toMatch(/up to 8 of the most useful/);
+    expect(prompt).not.toMatch(/EVERY distinct word/);
+  });
+
+  it("defaults to full help, and Spanish ignores the level", () => {
+    expect(buildSystemPrompt("fa")).toBe(buildSystemPrompt("fa", "full"));
+    expect(buildSystemPrompt("es")).toBe(buildSystemPrompt("es", "light"));
+    expect(buildSystemPrompt("es")).not.toMatch(/transliteration/);
+    expect(buildSystemPrompt()).toBe(buildSystemPrompt("es"));
   });
 
   it("tells the model compound parts is one string", () => {
     expect(buildSystemPrompt("fa")).toMatch(/parts \(one string/);
   });
+});
 
-  it("keeps the Farsi lists short enough to fit in one answer", () => {
-    const prompt = buildSystemPrompt("fa");
-    expect(prompt).toMatch(/segments: up to 6/);
-    expect(prompt).toMatch(/vocab: the most useful 10 to 15/);
-    expect(prompt).toMatch(/verbs: up to 6/);
+describe("enrichText (Farsi)", () => {
+  it("builds 2-paragraph batches at full help and keeps the source Persian exactly", async () => {
+    const complete = vi.fn(fakeFarsiModel());
+    const result = (await enrichText({ text: persianText(6), language: "fa", help: "full", complete })) as FarsiEnrichment;
+    expect(complete).toHaveBeenCalledTimes(3);
+    expect(result.paragraphs).toHaveLength(6);
+    expect(result.paragraphs.map((p) => p.persian)).toEqual(Array.from({ length: 6 }, (_, i) => persianPara(i + 1)));
+    expect(result.paragraphs[0].words).toHaveLength(2);
+    expect(result.paragraphs[0].english).toBe("English for Farsi paragraph 1.");
+    expect(result.summary).toBe("Gist of 1,2. Gist of 3,4. Gist of 5,6.");
   });
 
-  it("keeps the Spanish prompt free of Farsi fields", () => {
-    expect(buildSystemPrompt("es")).not.toMatch(/transliteration/);
-    expect(buildSystemPrompt()).toBe(buildSystemPrompt("es"));
+  it("uses bigger batches at lighter help", async () => {
+    const medium = vi.fn(fakeFarsiModel());
+    await enrichText({ text: persianText(6), language: "fa", help: "medium", complete: medium });
+    expect(medium).toHaveBeenCalledTimes(2);
+    const light = vi.fn(fakeFarsiModel());
+    await enrichText({ text: persianText(6), language: "fa", help: "light", complete: light });
+    expect(light).toHaveBeenCalledTimes(2);
   });
 
-  it("parses a Farsi response for a Farsi session in one call", async () => {
-    const complete = vi.fn<CompleteFn>().mockResolvedValue(farsiJson);
-    const result = (await enrichText({ text: "فردا می‌بینمت.", language: "fa", complete })) as FarsiEnrichment;
-    expect(result.vocab[0].transliteration).toBe("fardâ");
-    expect(complete).toHaveBeenCalledTimes(1);
+  it("sends the level's prompt to the model", async () => {
+    const complete = vi.fn(fakeFarsiModel());
+    await enrichText({ text: persianText(1), language: "fa", help: "light", complete });
+    expect(complete.mock.calls[0][0].system).toMatch(/up to 8 of the most useful/);
   });
 
-  it("rejects a Farsi-shaped response for a Spanish session and retries once", async () => {
-    const complete = vi.fn<CompleteFn>().mockResolvedValue(farsiJson);
-    await expect(enrichText({ text: "Hola.", language: "es", complete })).rejects.toBeInstanceOf(EnrichmentError);
+  it("defaults to full help", async () => {
+    const complete = vi.fn(fakeFarsiModel());
+    await enrichText({ text: persianText(1), language: "fa", complete });
+    expect(complete.mock.calls[0][0].system).toMatch(/EVERY distinct word/);
+  });
+
+  it("retries a bad batch once, and the retry says which numbers were expected", async () => {
+    const good = fakeFarsiModel();
+    const skipping: CompleteFn = async ({ messages }) => {
+      const full = JSON.parse(await good({ system: "", messages }));
+      full.paragraphs = full.paragraphs.slice(0, 1);
+      return JSON.stringify(full);
+    };
+    const complete = vi.fn<CompleteFn>().mockImplementationOnce(skipping).mockImplementation(good);
+    const result = (await enrichText({ text: persianText(2), language: "fa", help: "full", complete })) as FarsiEnrichment;
+    expect(result.paragraphs).toHaveLength(2);
+    const retry = complete.mock.calls[1][0];
+    expect(retry.messages[retry.messages.length - 1].content).toMatch(/expected exactly 1, 2/i);
+  });
+
+  it("rejects a Spanish-shaped response for a Farsi session after one retry", async () => {
+    const complete = vi.fn<CompleteFn>().mockImplementation(fakeModel());
+    await expect(enrichText({ text: persianText(1), language: "fa", complete })).rejects.toBeInstanceOf(EnrichmentError);
     expect(complete).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects a Farsi-shaped response for a Spanish session after one retry", async () => {
+    const complete = vi.fn<CompleteFn>().mockImplementation(fakeFarsiModel());
+    await expect(enrichText({ text: article(1), language: "es", complete })).rejects.toBeInstanceOf(EnrichmentError);
+    expect(complete).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps Spanish batching the same at any help level", async () => {
+    const a = vi.fn(fakeModel());
+    const b = vi.fn(fakeModel());
+    await enrichText({ text: article(12), language: "es", help: "full", complete: a });
+    await enrichText({ text: article(12), language: "es", help: "light", complete: b });
+    expect(a.mock.calls.length).toBe(b.mock.calls.length);
   });
 });

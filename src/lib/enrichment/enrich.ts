@@ -1,8 +1,9 @@
+import { batchLimits, DEFAULT_HELP, type HelpLevel } from "../help";
 import { DEFAULT_LANGUAGE, type Language } from "../languages";
-import { parseFarsiEnrichment, type FarsiEnrichment } from "./farsi-schema";
+import { mergeFarsiBatches, parseFarsiBatch, type FarsiEnrichment } from "./farsi-schema";
 import { batchParagraphs, splitParagraphs, MAX_ARTICLE_CHARS, type NumberedParagraph } from "./paragraphs";
-import { buildBatchUserPrompt, buildSystemPrompt, buildUserPrompt } from "./prompt";
-import { mergeBatches, parseBatch, type BatchResult, type Enrichment, type ParseResult } from "./schema";
+import { buildBatchUserPrompt, buildSystemPrompt } from "./prompt";
+import { mergeBatches, parseBatch, type Enrichment, type ParseResult } from "./schema";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -113,45 +114,53 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promis
   return results;
 }
 
-async function enrichSpanish(text: string, complete: CompleteFn): Promise<Enrichment> {
-  const paragraphs = splitParagraphs(text);
+/**
+ * Split the source into paragraphs in code, mine them in batches a few at a time, and put the results back
+ * together. The target-language text in the lesson is the source itself, never model output.
+ */
+async function enrichInBatches<R, L>(args: {
+  text: string;
+  language: Language;
+  help: HelpLevel;
+  complete: CompleteFn;
+  parse: (raw: string, expected: number[]) => ParseResult<R>;
+  merge: (paragraphs: string[], results: R[]) => L;
+}): Promise<L> {
+  const paragraphs = splitParagraphs(args.text);
   if (paragraphs.length === 0) throw new EnrichmentError("Input text is empty.");
 
-  const system = buildSystemPrompt("es");
-  const batches = batchParagraphs(paragraphs);
-  const results: BatchResult[] = await mapLimit(batches, BATCH_CONCURRENCY, (batch: NumberedParagraph[]) =>
+  const system = buildSystemPrompt(args.language, args.help);
+  const batches = batchParagraphs(paragraphs, batchLimits(args.language, args.help));
+  const results = await mapLimit(batches, BATCH_CONCURRENCY, (batch: NumberedParagraph[]) =>
     completeValidated({
       system,
       messages: [{ role: "user", content: buildBatchUserPrompt(batch) }],
-      complete,
+      complete: args.complete,
       parse: (raw) =>
-        parseBatch(
+        args.parse(
           raw,
           batch.map((p) => p.n),
         ),
     }),
   );
-  return mergeBatches(paragraphs, results);
-}
-
-async function enrichFarsi(text: string, complete: CompleteFn): Promise<FarsiEnrichment> {
-  return completeValidated({
-    system: buildSystemPrompt("fa"),
-    messages: [{ role: "user", content: buildUserPrompt(text.slice(0, MAX_INPUT_CHARS)) }],
-    complete,
-    parse: parseFarsiEnrichment,
-  });
+  return args.merge(paragraphs, results);
 }
 
 export async function enrichText(args: {
   text: string;
   language?: Language;
+  /** How many words a Farsi lesson glosses. Ignored for Spanish. */
+  help?: HelpLevel;
   complete: CompleteFn;
 }): Promise<Lesson> {
   const text = args.text.trim();
   if (!text) throw new EnrichmentError("Input text is empty.");
 
-  return (args.language ?? DEFAULT_LANGUAGE) === "fa"
-    ? enrichFarsi(text, args.complete)
-    : enrichSpanish(text, args.complete);
+  const language = args.language ?? DEFAULT_LANGUAGE;
+  const help = args.help ?? DEFAULT_HELP;
+
+  if (language === "fa") {
+    return enrichInBatches({ text, language, help, complete: args.complete, parse: parseFarsiBatch, merge: mergeFarsiBatches });
+  }
+  return enrichInBatches({ text, language, help, complete: args.complete, parse: parseBatch, merge: mergeBatches });
 }

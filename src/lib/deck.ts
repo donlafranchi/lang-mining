@@ -1,6 +1,7 @@
 import { explainDeckError } from "./db-errors";
 import type { DeckPayload } from "./deck-payload";
-import { deckKey } from "./deck-payload";
+import { deckKey, uniqueByKey } from "./deck-payload";
+import { MAX_SAVE_BATCH } from "./deck-limits";
 import { resolveLanguage, type Language } from "./languages";
 import { schedule, type Rating } from "./srs";
 import { db } from "./supabase";
@@ -60,6 +61,32 @@ export async function addToDeck(args: {
     .select("id");
   if (error) fail("Could not save the word", error.message);
   return { created: (data?.length ?? 0) > 0 };
+}
+
+/** Save many words at once. Words already saved are skipped. Returns how many new cards were made. */
+export async function addManyToDeck(args: {
+  language: Language;
+  payloads: DeckPayload[];
+  sessionId: string | null;
+}): Promise<{ created: number; total: number }> {
+  const payloads = uniqueByKey(args.payloads).slice(0, MAX_SAVE_BATCH);
+  if (payloads.length === 0) return { created: 0, total: 0 };
+
+  const { data, error } = await db()
+    .from("deck_items")
+    .upsert(
+      payloads.map((payload) => ({
+        kind: "vocab",
+        language: args.language,
+        key: deckKey(payload.lemma),
+        payload,
+        session_id: args.sessionId,
+      })),
+      { onConflict: "language,kind,key", ignoreDuplicates: true },
+    )
+    .select("id");
+  if (error) fail("Could not save the words", error.message);
+  return { created: data?.length ?? 0, total: payloads.length };
 }
 
 export async function listDeck(language: Language, limit = 500): Promise<DeckItem[]> {

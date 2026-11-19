@@ -15,7 +15,8 @@ type WordLike = {
   lemma: string;
   english: string;
   part_of_speech: string;
-  example_fragment: string;
+  /** Spanish words carry a short example. Farsi words do not, the paragraph above them is the example. */
+  example_fragment?: string;
   level?: string;
   transliteration?: string;
 };
@@ -25,7 +26,7 @@ export function toDeckPayload(word: WordLike): DeckPayload {
     lemma: word.lemma,
     english: word.english,
     part_of_speech: word.part_of_speech,
-    example: word.example_fragment,
+    example: word.example_fragment ?? "",
   };
   if (word.level) payload.level = word.level;
   if (word.transliteration) payload.transliteration = word.transliteration;
@@ -55,4 +56,17 @@ export function deckKey(lemma: string): string {
     .toLowerCase()
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/** Drop words that land on the same key, keeping the first. Used before saving many at once. */
+export function uniqueByKey(payloads: DeckPayload[]): DeckPayload[] {
+  const seen = new Set<string>();
+  const out: DeckPayload[] = [];
+  for (const p of payloads) {
+    const key = deckKey(p.lemma);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(p);
+  }
+  return out;
 }

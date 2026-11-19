@@ -463,3 +463,34 @@ a.back {
   align-items: center;
   justify-content: center;
 }
+
+.para-fa {
+  font-size: 1.3rem;
+  line-height: 1.9;
+}
+
+.word-list {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.word-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px 8px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.word-row:last-child {
+  border-bottom: 0;
+}
+
+.word-main {
+  flex: 1;
+  min-width: 0;
+}
