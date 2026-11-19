@@ -494,3 +494,13 @@ a.back {
   flex: 1;
   min-width: 0;
 }
+
+.install-hint {
+  margin-bottom: 16px;
+}
+
+a.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

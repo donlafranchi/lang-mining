@@ -34,6 +34,13 @@ npm test
 
 On Vercel, set the same variables from `.env.example` as project environment variables.
 
+## Install on your phone
+
+- iPhone: open the site in Safari, tap Share, then Add to Home Screen.
+- Android and desktop Chrome: use the Install button on the home screen card, or the browser's install option.
+
+The installed app works like the site. With no connection it shows an offline screen, since lessons and the deck live in your account and are never stored on the device.
+
 ## Docs
 
 - [Spec](docs/spec.md)
