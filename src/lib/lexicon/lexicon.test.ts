@@ -1,29 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { collectFromLesson, harvestLesson, harvestSafely, seedCore } from "./harvest";
-import { lexiconKey, mergeLemma, mergeSenses, normalizePos, type FormRow, type LemmaRow } from "./model";
+import { lexiconKey, mergeLemma, mergeSenses, normalizePos, type LemmaRow } from "./model";
+import { memoryStore } from "../../test-support/memory-lexicon";
 import type { LexiconStore } from "./store";
 import type { Enrichment } from "../enrichment/schema";
 import type { FarsiEnrichment } from "../enrichment/farsi-schema";
-
-function memoryStore() {
-  const lemmas = new Map<string, LemmaRow>();
-  const forms = new Map<string, FormRow>();
-  const store: LexiconStore = {
-    async getLemmas(language, keys) {
-      return [...lemmas.values()].filter((r) => r.language === language && keys.includes(r.lemma_key));
-    },
-    async getForms(language, keys) {
-      return [...forms.values()].filter((f) => f.language === language && keys.includes(f.form_key));
-    },
-    async upsertLemmas(rows) {
-      for (const r of rows) lemmas.set(`${r.language}|${r.lemma_key}|${r.pos}`, structuredClone(r));
-    },
-    async upsertForms(rows) {
-      for (const f of rows) forms.set(`${f.language}|${f.form_key}|${f.lemma_key}|${f.pos}`, structuredClone(f));
-    },
-  };
-  return { store, lemmas, forms };
-}
 
 const spanishLesson = (english = "to give"): Enrichment =>
   ({

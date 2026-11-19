@@ -145,6 +145,9 @@ function VocabList({ items, sessionId, coreRanks }: { items: Vocab[]; sessionId:
               {v.part_of_speech} · {v.level}
               {v.example_fragment ? ` · “${v.example_fragment}”` : ""}
             </div>
+            {v.senses && v.senses.length > 1 && (
+              <div className="muted">Could also mean: {v.senses.slice(1).join("; ")}. Which fits here?</div>
+            )}
           </div>
           <SaveWordButton word={v} language="es" sessionId={sessionId} compact />
         </div>

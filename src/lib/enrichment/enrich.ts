@@ -3,6 +3,9 @@ import { DEFAULT_LANGUAGE, type Language } from "../languages";
 import { mergeFarsiBatches, parseFarsiBatch, type FarsiEnrichment } from "./farsi-schema";
 import { batchParagraphs, splitParagraphs, MAX_ARTICLE_CHARS, type NumberedParagraph } from "./paragraphs";
 import { buildBatchUserPrompt, buildSystemPrompt } from "./prompt";
+import { knownToFarsiWord, knownToVocab, lookupTokens, orderByAppearance, splitKnown, type KnownWord } from "../lexicon/lookup";
+import type { LexiconStore } from "../lexicon/store";
+import { tokens } from "../highlight";
 import { mergeBatches, parseBatch, type Enrichment, type ParseResult } from "./schema";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -125,16 +128,31 @@ async function enrichInBatches<R, L>(args: {
   complete: CompleteFn;
   parse: (raw: string, expected: number[]) => ParseResult<R>;
   merge: (paragraphs: string[], results: R[]) => L;
+  lexicon?: LexiconStore;
+  /** Adds the words the lexicon explained to the merged lesson. */
+  inject?: (lesson: L, explained: Map<number, { token: string; word: KnownWord }[]>, paragraphs: string[]) => L;
 }): Promise<L> {
   const paragraphs = splitParagraphs(args.text);
   if (paragraphs.length === 0) throw new EnrichmentError("Input text is empty.");
+
+  // Words our own lexicon already knows are explained from it, and the model is told to leave them out.
+  const skips = new Map<number, string[]>();
+  const explained = new Map<number, { token: string; word: KnownWord }[]>();
+  if (args.lexicon) {
+    const known = await lookupTokens(args.lexicon, args.language, paragraphs.flatMap((p) => tokens(p)));
+    paragraphs.forEach((text, i) => {
+      const split = splitKnown(text, known, args.help);
+      skips.set(i + 1, split.skip);
+      explained.set(i + 1, split.explain);
+    });
+  }
 
   const system = buildSystemPrompt(args.language, args.help);
   const batches = batchParagraphs(paragraphs, batchLimits(args.language, args.help));
   const results = await mapLimit(batches, BATCH_CONCURRENCY, (batch: NumberedParagraph[]) =>
     completeValidated({
       system,
-      messages: [{ role: "user", content: buildBatchUserPrompt(batch) }],
+      messages: [{ role: "user", content: buildBatchUserPrompt(batch, skips) }],
       complete: args.complete,
       parse: (raw) =>
         args.parse(
@@ -143,7 +161,8 @@ async function enrichInBatches<R, L>(args: {
         ),
     }),
   );
-  return args.merge(paragraphs, results);
+  const lesson = args.merge(paragraphs, results);
+  return args.inject && args.lexicon ? args.inject(lesson, explained, paragraphs) : lesson;
 }
 
 export async function enrichText(args: {
@@ -152,6 +171,8 @@ export async function enrichText(args: {
   /** How many words the lesson glosses. Defaults to light for Spanish and full for Farsi. */
   help?: HelpLevel;
   complete: CompleteFn;
+  /** Our own word list. Words it knows are explained from it, and the model only handles the rest. */
+  lexicon?: LexiconStore;
 }): Promise<Lesson> {
   const text = args.text.trim();
   if (!text) throw new EnrichmentError("Input text is empty.");
@@ -159,8 +180,47 @@ export async function enrichText(args: {
   const language = args.language ?? DEFAULT_LANGUAGE;
   const help = args.help ?? defaultHelp(language);
 
+  const lexicon = args.lexicon;
   if (language === "fa") {
-    return enrichInBatches({ text, language, help, complete: args.complete, parse: parseFarsiBatch, merge: mergeFarsiBatches });
+    return enrichInBatches({
+      text,
+      language,
+      help,
+      complete: args.complete,
+      parse: parseFarsiBatch,
+      merge: mergeFarsiBatches,
+      lexicon,
+      inject: (lesson, explained, paragraphs) => ({
+        ...lesson,
+        paragraphs: lesson.paragraphs.map((p, i) => ({
+          ...p,
+          words: orderByAppearance(
+            paragraphs[i],
+            [...(explained.get(i + 1) ?? []).map((x) => knownToFarsiWord(x.token, x.word)), ...p.words],
+            (w) => w.surface,
+          ),
+        })),
+      }),
+    });
   }
-  return enrichInBatches({ text, language, help, complete: args.complete, parse: parseBatch, merge: mergeBatches });
+  return enrichInBatches({
+    text,
+    language,
+    help,
+    complete: args.complete,
+    parse: parseBatch,
+    merge: mergeBatches,
+    lexicon,
+    inject: (lesson, explained, paragraphs) => ({
+      ...lesson,
+      paragraphs: lesson.paragraphs.map((p, i) => ({
+        ...p,
+        vocab: orderByAppearance(
+          paragraphs[i],
+          [...(explained.get(i + 1) ?? []).map((x) => knownToVocab(x.token, x.word)), ...p.vocab],
+          (v) => v.surface_form,
+        ),
+      })),
+    }),
+  });
 }

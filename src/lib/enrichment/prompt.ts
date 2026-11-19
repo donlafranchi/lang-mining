@@ -46,6 +46,7 @@ Reflexive verbs: the reflexive key is required on every verb. Use null when the 
 - impersonal: the passive or impersonal se (se habla español, Spanish is spoken)
 
 Rules:
+- If the message lists words the app already explains for a paragraph, leave those words out of vocab.
 - Do not copy the Spanish paragraphs back. They are attached by the app, so return only the English and the mined items.
 - Never skip a paragraph: every paragraph number gets an entry, even if its lists are empty.
 - For reflexive uses, put the reflexive pronoun in every form of the conjugation_table (me lavo, te lavas, se lava).
@@ -87,6 +88,7 @@ ${patternPromptLines("fa")}
 Compound verbs: the compound key is required on every verb. Use null for a simple verb. When the verb is a noun or adjective plus a light verb (for example kâr kardan, "to work"), set it to { parts (one string with the pieces and their meanings, for example "kâr (work) + kardan (to do)"), explanation (one or two plain sentences for an English speaker) }.
 
 Rules:
+- If the message lists words the app already explains for a paragraph, leave those words out of words.
 - Do not copy the Persian paragraphs back. They are attached by the app, so return only the transliteration, the English and the mined items.
 - Never skip a paragraph: every paragraph number gets an entry, even if its lists are empty.
 - Every Persian word or sentence needs a Latin transliteration and an English meaning.
@@ -101,6 +103,12 @@ export function buildSystemPrompt(language: Language = "es", help: HelpLevel = d
 }
 
 /** The numbered paragraphs for one Spanish batch. */
-export function buildBatchUserPrompt(batch: { n: number; text: string }[]): string {
-  return `Paragraphs to mine:\n\n${batch.map((p) => `[${p.n}] ${p.text}`).join("\n\n")}`;
+export function buildBatchUserPrompt(batch: { n: number; text: string }[], skips?: Map<number, string[]>): string {
+  // One line that does not start with a bracketed number, so it is not mistaken for a paragraph.
+  const lists = batch
+    .map((p) => ({ n: p.n, words: skips?.get(p.n) ?? [] }))
+    .filter((x) => x.words.length > 0)
+    .map((x) => `paragraph ${x.n}: ${x.words.join(", ")}`);
+  const line = lists.length > 0 ? `Words the app already explains, so leave them out of the word list (still list verbs as asked): ${lists.join("; ")}\n\n` : "";
+  return `${line}Paragraphs to mine:\n\n${batch.map((p) => `[${p.n}] ${p.text}`).join("\n\n")}`;
 }

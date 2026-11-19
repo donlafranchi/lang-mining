@@ -35,6 +35,8 @@ const vocabSchema = z.object({
   english: z.string().min(1),
   example_fragment: exampleFragment,
   level: z.enum(LEVELS),
+  // Every common meaning from our lexicon. The learner works out which fits from the context.
+  senses: z.array(z.string()).max(8).optional(),
 });
 
 const idiomSchema = z.object({

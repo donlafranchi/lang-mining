@@ -412,3 +412,42 @@ describe("enrichText (Farsi)", () => {
     expect(complete.mock.calls[0][0].system).toMatch(/EVERY distinct word/);
   });
 });
+
+describe("enrichText with our own lexicon", () => {
+  const lexiconWith = async () => {
+    const { memoryStore } = await import("../../test-support/memory-lexicon");
+    const m = memoryStore();
+    await m.store.upsertLemmas([
+      {
+        language: "es", lemma: "párrafo", lemma_key: "párrafo", pos: "noun", transliteration: null, level: null,
+        core_rank: 100, senses: [{ english: "paragraph", count: 2 }, { english: "section", count: 1 }], source: "core", uses: 0,
+      },
+    ]);
+    return m.store;
+  };
+
+  it("explains known words itself, shows every sense, and tells the model to leave them out", async () => {
+    const complete = vi.fn(fakeModel());
+    const lesson = (await enrichText({ text: article(1), help: "full", complete, lexicon: await lexiconWith() })) as Enrichment;
+    const prompt = complete.mock.calls[0][0].messages[0].content;
+    expect(prompt).toMatch(/already explains.*paragraph 1: Párrafo/);
+    const entry = lesson.paragraphs[0].vocab.find((v) => v.lemma === "párrafo");
+    expect(entry).toMatchObject({ english: "paragraph", senses: ["paragraph", "section"], surface_form: "Párrafo" });
+    // The model's own entry is still there for words the lexicon does not know.
+    expect(lesson.paragraphs[0].vocab.some((v) => v.lemma === "chévere")).toBe(true);
+  });
+
+  it("leaves light help to the model alone", async () => {
+    const complete = vi.fn(fakeModel());
+    const lesson = (await enrichText({ text: article(1), help: "light", complete, lexicon: await lexiconWith() })) as Enrichment;
+    expect(complete.mock.calls[0][0].messages[0].content).not.toMatch(/already explains/);
+    expect(lesson.paragraphs[0].vocab.some((v) => v.lemma === "párrafo")).toBe(false);
+  });
+
+  it("works exactly as before with no lexicon", async () => {
+    const complete = vi.fn(fakeModel());
+    const lesson = (await enrichText({ text: article(1), help: "full", complete })) as Enrichment;
+    expect(complete.mock.calls[0][0].messages[0].content).not.toMatch(/already explains/);
+    expect(lesson.paragraphs[0].vocab).toHaveLength(1);
+  });
+});

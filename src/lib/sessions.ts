@@ -178,6 +178,7 @@ export async function buildSession(args: {
       language: args.language,
       help: args.help,
       complete: createAnthropicComplete(args.model),
+      lexicon: supabaseLexiconStore(),
     });
     await saveEnrichment(args.id, args.model, enrichment);
     await db().from("sessions").update({ status: "ready", error: null }).eq("id", args.id);
@@ -221,6 +222,7 @@ export async function finishRerun(args: { id: string; text: string; language: La
       language: args.language,
       help: args.help,
       complete: createAnthropicComplete(args.model),
+      lexicon: supabaseLexiconStore(),
     });
     await saveEnrichment(args.id, args.model, enrichment);
     await db().from("sessions").update({ status: "ready", error: null }).eq("id", args.id);

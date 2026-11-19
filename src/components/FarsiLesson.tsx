@@ -159,6 +159,9 @@ function WordList({ items, sessionId, coreRanks }: { items: FarsiWord[]; session
               {w.english} · {w.part_of_speech}
               {w.register !== "neutral" ? ` · ${w.register}` : ""} · {w.level}
             </div>
+            {w.senses && w.senses.length > 1 && (
+              <div className="muted">Could also mean: {w.senses.slice(1).join("; ")}. Which fits here?</div>
+            )}
           </div>
           <SaveWordButton word={w} language="fa" sessionId={sessionId} compact />
         </div>
