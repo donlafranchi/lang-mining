@@ -50,6 +50,8 @@ const POS_NAMES: Record<string, string> = {
   number: "num",
   interj: "interj",
   interjection: "interj",
+  intj: "interj",
+  particle: "other",
 };
 
 /** The model writes parts of speech in its own words ("adjective", "noun (masculine)"). Bring them to one short list. */
