@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import { startupImages } from "@/lib/splash";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Hand to Brain",
   description: "Learn Spanish and Farsi from anything you read.",
-  applicationName: "lang-mining",
-  appleWebApp: { capable: true, title: "Hand to Brain", statusBarStyle: "default" },
+  applicationName: "Hand to Brain",
+  appleWebApp: { capable: true, title: "Hand to Brain", statusBarStyle: "default", startupImage: startupImages() },
   // Stops iOS turning numbers in a lesson into phone links.
   formatDetection: { telephone: false },
 };
