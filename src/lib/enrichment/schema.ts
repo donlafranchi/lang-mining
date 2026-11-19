@@ -95,8 +95,8 @@ const paragraphResultSchema = z.object({
   n: z.number().int().positive(),
   english: z.string().min(1).max(8000),
   key_phrase: keyPhraseSchema,
-  verbs: z.array(verbSchema).max(6),
-  vocab: z.array(vocabSchema).max(12),
+  verbs: z.array(verbSchema).max(10),
+  vocab: z.array(vocabSchema).max(80),
   idioms: z.array(idiomSchema).max(6),
   // Older lessons were built without patterns, so they read as none.
   patterns: z.array(patternUseSchema).max(8).default([]),
