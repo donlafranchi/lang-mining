@@ -29,7 +29,7 @@ export function PatternCard(props: { pattern: Pattern; quotes: string[]; isNew: 
   }
 
   return (
-    <details className="item" open={isNew}>
+    <details className="item" id={pattern.id} open={isNew}>
       <summary>
         <span className="lead">{pattern.title}</span>
         {isNew && <span className="pill">new to you</span>}

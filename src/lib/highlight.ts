@@ -55,3 +55,37 @@ export function splitForHighlight(text: string, forms: Record<string, number>): 
   if (last < text.length) pieces.push({ text: text.slice(last) });
   return pieces;
 }
+
+export type Mark = { start: number; end: number; id: string };
+
+/** Where each pattern's quote sits in the paragraph. Quotes that cannot be found, and overlaps, are left out. */
+export function locatePatternMarks(text: string, uses: { id: string; quote: string }[]): Mark[] {
+  const lower = text.toLowerCase();
+  const found: Mark[] = [];
+  for (const u of uses) {
+    const q = u.quote.trim().toLowerCase();
+    if (!q) continue;
+    const start = lower.indexOf(q);
+    if (start < 0) continue;
+    found.push({ start, end: start + q.length, id: u.id });
+  }
+  found.sort((a, b) => a.start - b.start);
+  const out: Mark[] = [];
+  for (const m of found) if (out.length === 0 || m.start >= out[out.length - 1].end) out.push(m);
+  return out;
+}
+
+export type MarkedPart = { mark?: string; pieces: Piece[] };
+
+/** Cut text at the marks, and cut each part again for the core words. Joining every piece gives back the text. */
+export function splitMarked(text: string, forms: Record<string, number>, marks: Mark[]): MarkedPart[] {
+  const parts: MarkedPart[] = [];
+  let last = 0;
+  for (const m of marks) {
+    if (m.start > last) parts.push({ pieces: splitForHighlight(text.slice(last, m.start), forms) });
+    parts.push({ mark: m.id, pieces: splitForHighlight(text.slice(m.start, m.end), forms) });
+    last = m.end;
+  }
+  if (last < text.length || parts.length === 0) parts.push({ pieces: splitForHighlight(text.slice(last), forms) });
+  return parts;
+}

@@ -147,3 +147,13 @@ describe("flatten (Farsi)", () => {
     expect(allFarsiVerbs(e)).toEqual([]);
   });
 });
+
+import { keyWords } from "./flatten";
+
+describe("keyWords", () => {
+  const v = (lemma: string) => ({ lemma, surface_form: lemma, part_of_speech: "noun", english: lemma, example_fragment: "", level: "A1" as const });
+  const lesson = { paragraphs: [{ vocab: [v("zorro"), v("casa"), v("río")] }, { vocab: [v("casa"), v("mesa")] }] } as unknown as Parameters<typeof keyWords>[0];
+  it("puts core words first, once each, and respects the limit", () => {
+    expect(keyWords(lesson, { casa: 20, mesa: 90 }, 3).map((x) => x.lemma)).toEqual(["casa", "mesa", "zorro"]);
+  });
+});

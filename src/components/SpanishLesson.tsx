@@ -1,10 +1,11 @@
 "use client";
 
-import { allIdioms, allVerbs, allVocab } from "@/lib/enrichment/flatten";
+import Link from "next/link";
+import { allIdioms, allVerbs, allVocab, keyWords } from "@/lib/enrichment/flatten";
 import type { Enrichment, Idiom, ReflexiveKind, Verb, Vocab } from "@/lib/enrichment/schema";
-import { lessonPatterns } from "@/lib/patterns";
+import { lessonPatterns, patternById, patternKind } from "@/lib/patterns";
 import { HighlightedText } from "./HighlightedText";
-import { KnownPatterns, NewPatterns, PatternTags } from "./PatternCard";
+import { KnownPatterns } from "./PatternCard";
 import { Pager } from "./Pager";
 import { SaveAllButton } from "./SaveAllButton";
 import { SaveWordButton } from "./SaveWordButton";
@@ -59,54 +60,91 @@ function Reader({
   coreForms: Record<string, number>;
 }) {
   const patterns = lessonPatterns(e.paragraphs);
-  const pages = e.paragraphs.map((p, i) => (
-    <div key={i} className="stack">
-      <div className="card para-es">
-        <HighlightedText text={p.spanish} forms={coreForms} />
+  const words = keyWords(e, coreRanks);
+  const pages = e.paragraphs.map((p, i) => {
+    // Only patterns this person has not been shown are highlighted, so a known one never nags.
+    const fresh = (p.patterns ?? []).filter((u) => patternById(u.id) && !seenPatterns.includes(u.id));
+    const freshIds = [...new Set(fresh.map((u) => u.id))];
+    return (
+      <div key={i} className="stack">
+        <div className="card para-es">
+          <HighlightedText text={p.spanish} forms={coreForms} marks={fresh} />
+        </div>
+        {p.vocab.length > 0 && (
+          <div className="stack">
+            <div className="section-label">Vocabulary</div>
+            <SaveAllButton words={p.vocab} language="es" sessionId={sessionId} />
+            <VocabList items={p.vocab} sessionId={sessionId} coreRanks={coreRanks} />
+          </div>
+        )}
+        {p.verbs.length > 0 && (
+          <div className="stack">
+            <div className="section-label">Verbs</div>
+            <VerbList items={p.verbs} />
+          </div>
+        )}
+        {freshIds.length > 0 && (
+          <div className="new-patterns">
+            <span className="section-label">New to you</span>
+            {freshIds.map((id) => (
+              <Link key={id} href={`/study/patterns?language=es#${id}`} className={`mark mark-${patternKind(id)}`}>
+                {patternById(id)!.title.replace(/ \(.*\)$/, "")}
+              </Link>
+            ))}
+          </div>
+        )}
+        {p.idioms.length > 0 && (
+          <div className="stack">
+            <div className="section-label">Idioms</div>
+            <IdiomList items={p.idioms} />
+          </div>
+        )}
+        <details className="item">
+          <summary>
+            <span className="lead">English</span>
+          </summary>
+          <div className="body stack">
+            <div className="para-en">{p.english}</div>
+            <div>
+              <span className="muted">Key phrase: </span>
+              {p.key_phrase.spanish} <span className="muted">· {p.key_phrase.english}</span>
+            </div>
+          </div>
+        </details>
       </div>
-      <div className="card stack">
-        <div className="lead">Key phrase</div>
-        <div>{p.key_phrase.spanish}</div>
-        <div className="muted">{p.key_phrase.english}</div>
-      </div>
-      <PatternTags uses={p.patterns} />
-      {p.verbs.length > 0 && (
-        <div className="stack">
-          <div className="section-label">Verbs</div>
-          <VerbList items={p.verbs} />
-        </div>
-      )}
-      {p.vocab.length > 0 && (
-        <div className="stack">
-          <div className="section-label">Vocabulary</div>
-          <SaveAllButton words={p.vocab} language="es" sessionId={sessionId} />
-          <VocabList items={p.vocab} sessionId={sessionId} coreRanks={coreRanks} />
-        </div>
-      )}
-      {p.idioms.length > 0 && (
-        <div className="stack">
-          <div className="section-label">Idioms</div>
-          <IdiomList items={p.idioms} />
-        </div>
-      )}
-      <div className="card para-en">{p.english}</div>
-    </div>
-  ));
+    );
+  });
 
   return (
     <div className="stack">
-      <div className="card">{e.summary}</div>
-      <p className="muted">Underlined words are among the 2,000 most common.</p>
-      <NewPatterns patterns={patterns} seen={seenPatterns} />
+      {words.length > 0 && (
+        <div className="key-words" aria-label="Key words">
+          {words.map((v) => (
+            <span key={v.lemma} className="pill">
+              {v.lemma} · {v.english}
+            </span>
+          ))}
+        </div>
+      )}
+      <details className="item">
+        <summary>
+          <span className="lead">Overview in English</span>
+        </summary>
+        <div className="body">{e.summary}</div>
+      </details>
       <Pager pages={pages} label="Paragraph" />
       <KnownPatterns patterns={patterns} seen={seenPatterns} />
       {e.grammar_notes.length > 0 && (
-        <div className="card stack">
-          <div className="lead">Grammar notes</div>
-          {e.grammar_notes.map((n, i) => (
-            <p key={i}>{n}</p>
-          ))}
-        </div>
+        <details className="item">
+          <summary>
+            <span className="lead">Grammar notes</span>
+          </summary>
+          <div className="body stack">
+            {e.grammar_notes.map((n, i) => (
+              <p key={i}>{n}</p>
+            ))}
+          </div>
+        </details>
       )}
     </div>
   );

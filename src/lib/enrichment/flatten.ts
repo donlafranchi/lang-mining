@@ -37,3 +37,14 @@ export function allFarsiIdioms(e: FarsiEnrichment): FarsiIdiom[] {
 export function allFarsiVerbs(e: FarsiEnrichment): FarsiVerb[] {
   return unique(e.paragraphs.flatMap((p) => p.verbs), (v) => `${v.infinitive}|${v.form_in_source}`);
 }
+
+/**
+ * A handful of words to show at the top of a lesson: words from the core 2,000 first (the ones worth learning), then
+ * any others, each in the order they appear. One entry per dictionary form.
+ */
+export function keyWords(e: Enrichment, coreRanks: Record<string, number>, limit = 6): Vocab[] {
+  const words = allVocab(e);
+  const core = words.filter((v) => coreRanks[v.lemma]);
+  const rest = words.filter((v) => !coreRanks[v.lemma]);
+  return [...core, ...rest].slice(0, limit);
+}
