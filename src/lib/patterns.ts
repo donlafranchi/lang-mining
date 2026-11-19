@@ -28,6 +28,8 @@ export type Pattern = {
   examples: PatternExample[];
   /** One line for the model, so it can recognise the pattern. */
   hint: string;
+  /** Short literal pieces, such as "hace dos años" with "2 years ago". The pattern popup shows one of these when there is one. */
+  chunks?: { text: string; english: string }[];
 };
 
 const CATALOGS: Record<Language, Pattern[]> = { es: SPANISH_PATTERNS, fa: FARSI_PATTERNS };
@@ -78,4 +80,20 @@ const KINDS: Record<string, PatternKind> = {
 /** Which highlight colour a pattern gets. Patterns not listed here get the neutral one. */
 export function patternKind(id: string): PatternKind {
   return KINDS[id] ?? "other";
+}
+
+/** The single example to show for a pattern: the short chunk sharing the most words with what is in the text, else the first. */
+export function exampleFor(pattern: Pattern, quote = ""): PatternExample {
+  const words = quote.toLowerCase().split(/\s+/).filter(Boolean);
+  const pool: PatternExample[] = pattern.chunks?.length ? pattern.chunks : pattern.examples;
+  let best = pool[0];
+  let bestScore = 0;
+  for (const x of pool) {
+    const score = x.text.toLowerCase().split(/\s+/).filter((w) => words.includes(w)).length;
+    if (score > bestScore) {
+      best = x;
+      bestScore = score;
+    }
+  }
+  return best;
 }

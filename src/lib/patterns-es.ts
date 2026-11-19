@@ -199,7 +199,7 @@ export const SPANISH_PATTERNS: Pattern[] = [
   },
   {
     id: "hace_time",
-    title: "Time ago (hace dos años)",
+    title: "Time since, or how long (hace + time)",
     build: "hace + a length of time, and a verb in the past (ago) or hace … que + present (for)",
     explanation:
       "“Hace” plus a length of time means that long ago: “llegué hace una hora”. Start with it and add “que”, and it means how long something has been going on: “hace dos años que estudio español”, I have been studying Spanish for two years.",
@@ -210,6 +210,12 @@ export const SPANISH_PATTERNS: Pattern[] = [
       { text: "Hace mucho que no te veo.", english: "I haven't seen you in a long time." },
     ],
     hint: "hace + a length of time, such as hace dos años or hace mucho que",
+    chunks: [
+      { text: "hace dos años", english: "2 years ago" },
+      { text: "hace una hora", english: "1 hour ago" },
+      { text: "hace mucho", english: "a long time ago" },
+      { text: "hace dos años que estudio", english: "I have been studying for 2 years" },
+    ],
   },
   {
     id: "llevar_gerund",

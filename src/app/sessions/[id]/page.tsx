@@ -13,6 +13,7 @@ import { isUuid } from "@/lib/ids";
 import { getSession } from "@/lib/sessions";
 import { effectiveStatus } from "@/lib/status";
 import { requireUser } from "@/lib/auth";
+import { underlineOn } from "@/lib/underline-pref";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,8 @@ export default async function SessionPage(props: PageProps<"/sessions/[id]">) {
       ];
     }
     coreRanks = coreRanksFor(language, lemmas);
-    coreForms = coreHighlightMap(coreWords(language), texts, glossed);
+    // Underlines can be switched off in Settings. The "core #N" tags stay.
+    if (await underlineOn()) coreForms = coreHighlightMap(coreWords(language), texts, glossed);
   }
 
   return (

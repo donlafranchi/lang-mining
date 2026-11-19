@@ -2,7 +2,7 @@ import Link from "next/link";
 import { SaveAllButton } from "@/components/SaveAllButton";
 import { SaveWordButton } from "@/components/SaveWordButton";
 import { requireUser } from "@/lib/auth";
-import { coreProgress, coreToPayload, coreWords } from "@/lib/core";
+import { coreBatch, coreProgress, coreToPayload, coreWords } from "@/lib/core";
 import { listDeckKeys } from "@/lib/deck";
 import { LANGUAGES } from "@/lib/languages";
 import { preferredLanguage } from "@/lib/language-pref";
@@ -23,6 +23,18 @@ export default async function CorePage(props: PageProps<"/study/core">) {
   }
   const progress = coreProgress(coreWords(language), keys);
   const percent = Math.round((progress.inDeck / progress.total) * 100);
+
+  // Which twenty to show: from a rank onward, content words only unless asked for everything.
+  const startParam = Number(Array.isArray(sp.start) ? sp.start[0] : sp.start);
+  const start = Number.isInteger(startParam) && startParam > 0 ? startParam : 1;
+  const everything = (Array.isArray(sp.all) ? sp.all[0] : sp.all) === "1";
+  const batch = coreBatch(coreWords(language), keys, { start, contentOnly: !everything });
+  const here = (extra: { start?: number; all?: boolean }) => {
+    const q = new URLSearchParams({ language });
+    if (extra.start && extra.start > 1) q.set("start", String(extra.start));
+    if (extra.all ?? everything) q.set("all", "1");
+    return `/study/core?${q.toString()}`;
+  };
 
   return (
     <main className="shell">
@@ -50,18 +62,21 @@ export default async function CorePage(props: PageProps<"/study/core">) {
         <progress value={progress.inDeck} max={progress.total} aria-label="Core words in your deck" />
       </div>
 
-      {progress.next.length > 0 ? (
+      {batch.words.length > 0 ? (
         <div className="stack">
-          <div className="section-label">Next up</div>
+          <div className="section-label">
+            {everything ? "Every kind of word" : "Nouns, verbs, adjectives and adverbs"}
+            {batch.words[0].rank > 1 ? ` · from #${batch.words[0].rank}` : ""}
+          </div>
           <SaveAllButton
-            key={progress.next[0].rank}
-            words={progress.next.map(coreToPayload)}
+            key={`${start}-${everything}`}
+            words={batch.words.map(coreToPayload)}
             language={language}
-            label={`＋ Add these ${progress.next.length} to my deck`}
+            label={`＋ Add these ${batch.words.length} to my deck`}
             refresh
           />
           <div className="word-list">
-            {progress.next.map((w) => (
+            {batch.words.map((w) => (
               <div key={w.rank} className="word-row">
                 <div className="word-main">
                   <div>
@@ -79,9 +94,44 @@ export default async function CorePage(props: PageProps<"/study/core">) {
               </div>
             ))}
           </div>
+          <div className="deck-links">
+            {batch.nextStart !== null && (
+              <Link className="btn secondary" href={here({ start: batch.nextStart })}>
+                Skip to the next 20 →
+              </Link>
+            )}
+            {start > 1 && (
+              <Link className="btn secondary" href={here({})}>
+                ← Back to the top
+              </Link>
+            )}
+            <Link className="btn secondary" href={here({ start, all: !everything })}>
+              {everything ? "Hide prepositions and other small words" : "Include prepositions and other small words"}
+            </Link>
+          </div>
+          <form className="stack" action="/study/core" method="get">
+            <input type="hidden" name="language" value={language} />
+            {everything && <input type="hidden" name="all" value="1" />}
+            <label className="field-label" htmlFor="core-start">
+              Start at word number
+            </label>
+            <div className="deck-links">
+              <input id="core-start" name="start" type="number" min={1} max={2000} inputMode="numeric" defaultValue={start > 1 ? start : undefined} placeholder="e.g. 300" />
+              <button className="btn secondary" type="submit">
+                Go
+              </button>
+            </div>
+          </form>
         </div>
       ) : (
-        <p className="card">All 2,000 are in your deck.</p>
+        <div className="stack">
+          <p className="card">{progress.inDeck === progress.total ? "All 2,000 are in your deck." : "Nothing more to offer from here."}</p>
+          {start > 1 && (
+            <Link className="btn secondary" href={here({})}>
+              ← Back to the top
+            </Link>
+          )}
+        </div>
       )}
     </main>
   );

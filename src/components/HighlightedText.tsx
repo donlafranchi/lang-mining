@@ -1,6 +1,9 @@
-import Link from "next/link";
+"use client";
+
+import { useState } from "react";
 import { locatePatternMarks, splitMarked, type Piece } from "@/lib/highlight";
 import { patternKind, type PatternUse } from "@/lib/patterns";
+import { PatternSheet } from "./PatternSheet";
 
 function Pieces({ pieces }: { pieces: Piece[] }) {
   return (
@@ -33,18 +36,21 @@ export function HighlightedText({
   marks?: PatternUse[];
   language?: string;
 }) {
-  const parts = splitMarked(text, forms, locatePatternMarks(text, marks));
+  const [open, setOpen] = useState<string | null>(null);
+  const located = locatePatternMarks(text, marks);
+  const parts = splitMarked(text, forms, located);
   return (
     <>
       {parts.map((part, i) =>
         part.mark ? (
-          <Link key={i} href={`/study/patterns?language=${language}#${part.mark}`} className={`mark mark-${patternKind(part.mark)}`}>
+          <button key={i} type="button" className={`mark mark-${patternKind(part.mark)}`} onClick={() => setOpen(part.mark!)}>
             <Pieces pieces={part.pieces} />
-          </Link>
+          </button>
         ) : (
           <Pieces key={i} pieces={part.pieces} />
         ),
       )}
+      {open && <PatternSheet id={open} quote={marks.find((m) => m.id === open)?.quote} language={language} onClose={() => setOpen(null)} />}
     </>
   );
 }
