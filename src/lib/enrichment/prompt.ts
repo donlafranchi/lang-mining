@@ -26,6 +26,7 @@ function buildSpanishPrompt(help: HelpLevel): string {
 
 The user message lists paragraphs as [1], [2] and so on. Return ONLY JSON, no prose before or after, no markdown fence. The JSON must have exactly these keys:
 - gist: one sentence in English saying what these paragraphs are about
+- title: a short English title for the text, at most 8 words, no quotation marks
 - paragraphs: one entry for EVERY paragraph number you were given, each exactly once, each { n (the paragraph number), english (a faithful English translation of the whole paragraph), key_phrase { spanish, english } (the single most useful phrase or construction in the paragraph, quoted exactly), verbs, vocab, idioms, patterns }
 - grammar_notes: up to 2 short notes on notable constructions across these paragraphs
 
@@ -71,6 +72,7 @@ function buildFarsiPrompt(help: HelpLevel): string {
 
 The user message lists paragraphs as [1], [2] and so on. Return ONLY JSON, no prose before or after, no markdown fence. The JSON must have exactly these keys:
 - gist: one sentence in English saying what these paragraphs are about
+- title: a short English title for the text, at most 8 words, no quotation marks
 - paragraphs: one entry for EVERY paragraph number you were given, each exactly once, each { n (the paragraph number), transliteration (the whole paragraph in Latin letters, one consistent system with â for the long a, written the way it is said), english (a faithful English translation of the whole paragraph), key_phrase { persian, transliteration, english } (the single most useful phrase or construction in the paragraph, quoted exactly), words, verbs, idioms, patterns }
 - grammar_notes: up to 2 short notes on notable constructions across these paragraphs, such as the ezafe or attached pronouns
 

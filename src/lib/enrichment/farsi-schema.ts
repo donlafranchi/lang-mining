@@ -90,6 +90,7 @@ const paragraphResultSchema = z.object({
 
 export const farsiBatchResultSchema = z.object({
   gist: z.string().min(1),
+  title: z.string().max(200).optional(),
   paragraphs: z.array(paragraphResultSchema),
   grammar_notes: z.array(z.string()).default([]),
 });
@@ -102,6 +103,7 @@ const lessonParagraphSchema = paragraphResultSchema.omit({ n: true }).extend({
 
 export const farsiEnrichmentSchema = z.object({
   summary: z.string().min(1),
+  title: z.string().max(200).optional(),
   paragraphs: z.array(lessonParagraphSchema),
   grammar_notes: z.array(z.string()).default([]),
   quiz: z.array(quizSchema).default([]),

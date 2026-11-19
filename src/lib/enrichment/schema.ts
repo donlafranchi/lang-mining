@@ -104,6 +104,8 @@ const paragraphResultSchema = z.object({
 
 export const batchResultSchema = z.object({
   gist: z.string().min(1),
+  // A short English title for the text. Optional so older answers and lessons still read.
+  title: z.string().max(200).optional(),
   paragraphs: z.array(paragraphResultSchema),
   grammar_notes: z.array(z.string()).default([]),
 });
@@ -118,6 +120,7 @@ export type LessonParagraph = z.infer<typeof lessonParagraphSchema>;
 
 export const enrichmentSchema = z.object({
   summary: z.string().min(1),
+  title: z.string().max(200).optional(),
   paragraphs: z.array(lessonParagraphSchema),
   grammar_notes: z.array(z.string()).default([]),
   quiz: z.array(quizSchema).default([]),
@@ -221,13 +224,20 @@ export function mergeBatches(paragraphs: string[], batches: BatchResult[]): Enri
 }
 
 /** The lesson summary (the batch gists joined) and the grammar notes (deduped, capped). Shared by both languages. */
-export function joinBatchNotes(batches: { gist: string; grammar_notes: string[] }[]): {
+export function joinBatchNotes(batches: { gist: string; title?: string; grammar_notes: string[] }[]): {
   summary: string;
+  title?: string;
   grammar_notes: string[];
 } {
   const notes: string[] = [];
   for (const batch of batches) {
     for (const note of batch.grammar_notes) if (!notes.includes(note)) notes.push(note);
   }
-  return { summary: batches.map((b) => b.gist.trim()).join(" "), grammar_notes: notes.slice(0, MAX_GRAMMAR_NOTES) };
+  // The first batch names the whole text.
+  const title = batches.map((b) => b.title?.trim()).find(Boolean);
+  return {
+    summary: batches.map((b) => b.gist.trim()).join(" "),
+    ...(title ? { title } : {}),
+    grammar_notes: notes.slice(0, MAX_GRAMMAR_NOTES),
+  };
 }
