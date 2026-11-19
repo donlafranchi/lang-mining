@@ -36,7 +36,18 @@ const best = <T extends { uses: number }>(items: T[]) => items.reduce((a, b) => 
  * form could belong to several words the most used one wins, and its senses are all listed, so nothing is decided for
  * the learner. A storage failure means nothing is known, never an error.
  */
-export async function lookupTokens(store: LexiconStore, language: Language, words: string[]): Promise<Map<string, KnownWord>> {
+export type LemmaHint = { lemma: string; pos: string };
+
+/** Only content words are resolved by the analyzer's dictionary form. Function words ("lo", "se") keep their own entry. */
+const HINT_POS = new Set(["noun", "verb", "adj", "adv"]);
+
+export async function lookupTokens(
+  store: LexiconStore,
+  language: Language,
+  words: string[],
+  /** Dictionary forms from the language analyzer, by written form. They beat guessing from stored forms. */
+  hints: Map<string, LemmaHint> = new Map(),
+): Promise<Map<string, KnownWord>> {
   const out = new Map<string, KnownWord>();
   try {
     const keys = [...new Set(words.map(lexiconKey))].filter(Boolean);
@@ -46,14 +57,20 @@ export async function lookupTokens(store: LexiconStore, language: Language, word
     const formsByKey = new Map<string, FormRow[]>();
     for (const f of forms) formsByKey.set(f.form_key, [...(formsByKey.get(f.form_key) ?? []), f]);
 
-    const lemmaKeys = [...new Set([...keys, ...forms.map((f) => f.lemma_key)])];
+    const hintKeys = [...hints.values()].map((h) => lexiconKey(h.lemma));
+    const lemmaKeys = [...new Set([...keys, ...forms.map((f) => f.lemma_key), ...hintKeys])];
     const lemmas = await store.getLemmas(language, lemmaKeys);
     const lemmasByKey = new Map<string, LemmaRow[]>();
     for (const l of lemmas) lemmasByKey.set(l.lemma_key, [...(lemmasByKey.get(l.lemma_key) ?? []), l]);
 
     for (const key of keys) {
       let row: LemmaRow | undefined;
-      const viaForm = formsByKey.get(key);
+      const hint = hints.get(key);
+      if (hint && HINT_POS.has(hint.pos)) {
+        const candidates = lemmasByKey.get(lexiconKey(hint.lemma)) ?? [];
+        row = candidates.find((l) => l.pos === hint.pos) ?? candidates[0];
+      }
+      const viaForm = row ? undefined : formsByKey.get(key);
       if (viaForm) {
         const f = best(viaForm);
         row = lemmasByKey.get(f.lemma_key)?.find((l) => l.pos === f.pos);

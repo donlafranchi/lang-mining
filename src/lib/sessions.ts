@@ -3,6 +3,7 @@ import { explainSaveError, explainUsersError } from "./db-errors";
 import { enrichText, type Lesson } from "./enrichment/enrich";
 import { farsiEnrichmentSchema } from "./enrichment/farsi-schema";
 import { enrichmentSchema, type Dialect } from "./enrichment/schema";
+import { analyzerFromEnv } from "./analysis/http-analyzer";
 import { harvestSafely } from "./lexicon/harvest";
 import { supabaseLexiconStore } from "./lexicon/store";
 import { cleanTitle } from "./titles";
@@ -179,6 +180,7 @@ export async function buildSession(args: {
       help: args.help,
       complete: createAnthropicComplete(args.model),
       lexicon: supabaseLexiconStore(),
+      analyzer: analyzerFromEnv(),
     });
     await saveEnrichment(args.id, args.model, enrichment);
     await db().from("sessions").update({ status: "ready", error: null }).eq("id", args.id);
@@ -223,6 +225,7 @@ export async function finishRerun(args: { id: string; text: string; language: La
       help: args.help,
       complete: createAnthropicComplete(args.model),
       lexicon: supabaseLexiconStore(),
+      analyzer: analyzerFromEnv(),
     });
     await saveEnrichment(args.id, args.model, enrichment);
     await db().from("sessions").update({ status: "ready", error: null }).eq("id", args.id);

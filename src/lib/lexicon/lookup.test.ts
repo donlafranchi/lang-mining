@@ -114,3 +114,35 @@ describe("orderByAppearance", () => {
     expect(orderByAppearance("La casa y el perro", entries, (e) => e.s).map((e) => e.lemma)).toEqual(["casa", "perro"]);
   });
 });
+
+describe("lookupTokens with analyzer hints", () => {
+  it("resolves an inflected form the lexicon never saw, through the analyzer's dictionary form", async () => {
+    const store = await seeded();
+    const without = await lookupTokens(store, "es", ["casas"]);
+    expect(without.has("casas")).toBe(false);
+    const hints = new Map([["casas", { lemma: "casa", pos: "noun" }]]);
+    const withHints = await lookupTokens(store, "es", ["casas"], hints);
+    expect(withHints.get("casas")).toMatchObject({ lemma: "casa", senses: ["house", "home"] });
+  });
+
+  it("lets the analyzer settle a form that stored forms could read two ways", async () => {
+    const m = memoryStore();
+    await m.store.upsertLemmas([
+      lemma({ lemma: "vino", pos: "noun", senses: [{ english: "wine", count: 1 }] }),
+      lemma({ lemma: "venir", pos: "verb", senses: [{ english: "to come", count: 1 }] }),
+    ]);
+    await m.store.upsertForms([form({ form_key: "vino", lemma_key: "vino", pos: "noun", uses: 5 })]);
+    const hints = new Map([["vino", { lemma: "venir", pos: "verb" }]]);
+    expect((await lookupTokens(m.store, "es", ["vino"], hints)).get("vino")?.lemma).toBe("venir");
+  });
+
+  it("does not remap function words through the analyzer", async () => {
+    const m = memoryStore();
+    await m.store.upsertLemmas([
+      lemma({ lemma: "lo", pos: "pron", senses: [{ english: "it, him", count: 1 }] }),
+      lemma({ lemma: "él", pos: "pron", senses: [{ english: "he", count: 1 }] }),
+    ]);
+    const hints = new Map([["lo", { lemma: "él", pos: "pron" }]]);
+    expect((await lookupTokens(m.store, "es", ["lo"], hints)).get("lo")?.lemma).toBe("lo");
+  });
+});

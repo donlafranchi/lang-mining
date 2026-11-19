@@ -3,7 +3,10 @@ import { DEFAULT_LANGUAGE, type Language } from "../languages";
 import { mergeFarsiBatches, parseFarsiBatch, type FarsiEnrichment } from "./farsi-schema";
 import { batchParagraphs, splitParagraphs, MAX_ARTICLE_CHARS, type NumberedParagraph } from "./paragraphs";
 import { buildBatchUserPrompt, buildSystemPrompt } from "./prompt";
-import { knownToFarsiWord, knownToVocab, lookupTokens, orderByAppearance, splitKnown, type KnownWord } from "../lexicon/lookup";
+import type { Analyzer } from "../analysis/contract";
+import { harvestAnalysis } from "../lexicon/harvest";
+import { lexiconKey, normalizePos } from "../lexicon/model";
+import { knownToFarsiWord, knownToVocab, lookupTokens, orderByAppearance, splitKnown, type KnownWord, type LemmaHint } from "../lexicon/lookup";
 import type { LexiconStore } from "../lexicon/store";
 import { tokens } from "../highlight";
 import { mergeBatches, parseBatch, type Enrichment, type ParseResult } from "./schema";
@@ -129,6 +132,7 @@ async function enrichInBatches<R, L>(args: {
   parse: (raw: string, expected: number[]) => ParseResult<R>;
   merge: (paragraphs: string[], results: R[]) => L;
   lexicon?: LexiconStore;
+  analyzer?: Analyzer | null;
   /** Adds the words the lexicon explained to the merged lesson. */
   inject?: (lesson: L, explained: Map<number, { token: string; word: KnownWord }[]>, paragraphs: string[]) => L;
 }): Promise<L> {
@@ -139,7 +143,19 @@ async function enrichInBatches<R, L>(args: {
   const skips = new Map<number, string[]>();
   const explained = new Map<number, { token: string; word: KnownWord }[]>();
   if (args.lexicon) {
-    const known = await lookupTokens(args.lexicon, args.language, paragraphs.flatMap((p) => tokens(p)));
+    // The analyzer, when there is one, says which dictionary word each written form belongs to. If it is down the
+    // lesson is built without it.
+    const hints = new Map<string, LemmaHint>();
+    if (args.analyzer) {
+      try {
+        const analyses = await args.analyzer.analyze(args.language, paragraphs);
+        for (const a of analyses) for (const t of a.tokens) if (t.is_word && t.lemma) hints.set(lexiconKey(t.text), { lemma: t.lemma, pos: normalizePos(t.pos) });
+        await harvestAnalysis(args.lexicon, args.language, analyses).catch((e) => console.error("analysis harvest skipped", e instanceof Error ? e.message : e));
+      } catch (err) {
+        console.error("analysis skipped", err instanceof Error ? err.message : err);
+      }
+    }
+    const known = await lookupTokens(args.lexicon, args.language, paragraphs.flatMap((p) => tokens(p)), hints);
     paragraphs.forEach((text, i) => {
       const split = splitKnown(text, known, args.help);
       skips.set(i + 1, split.skip);
@@ -173,6 +189,8 @@ export async function enrichText(args: {
   complete: CompleteFn;
   /** Our own word list. Words it knows are explained from it, and the model only handles the rest. */
   lexicon?: LexiconStore;
+  /** Language analysis (dictionary forms), when the analysis service is set up. */
+  analyzer?: Analyzer | null;
 }): Promise<Lesson> {
   const text = args.text.trim();
   if (!text) throw new EnrichmentError("Input text is empty.");
@@ -181,6 +199,7 @@ export async function enrichText(args: {
   const help = args.help ?? defaultHelp(language);
 
   const lexicon = args.lexicon;
+  const analyzer = args.analyzer;
   if (language === "fa") {
     return enrichInBatches({
       text,
@@ -190,6 +209,7 @@ export async function enrichText(args: {
       parse: parseFarsiBatch,
       merge: mergeFarsiBatches,
       lexicon,
+      analyzer,
       inject: (lesson, explained, paragraphs) => ({
         ...lesson,
         paragraphs: lesson.paragraphs.map((p, i) => ({
@@ -211,6 +231,7 @@ export async function enrichText(args: {
     parse: parseBatch,
     merge: mergeBatches,
     lexicon,
+    analyzer,
     inject: (lesson, explained, paragraphs) => ({
       ...lesson,
       paragraphs: lesson.paragraphs.map((p, i) => ({

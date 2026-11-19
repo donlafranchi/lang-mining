@@ -18,4 +18,5 @@ Decision (Don, Nov 2026): rely on code and our own data for as much of the langu
 ## Steps
 - A (this PR): the lexicon tables, harvest from every lesson, seeding from the core lists, this document.
 - B: dictionary import for English senses, lookup before the LLM, show all senses to the learner.
-- C: the analysis worker (Python; Vercel Python function first for Spanish, Hazm for Farsi, a small container if the size limits bite), checked against stored lessons as the answer key, then switched in.
+- C1 (built): the analysis service in /analysis (FastAPI; spaCy es_core_news_sm for Spanish, Hazm for Persian) behind the `Analyzer` contract in src/lib/analysis. A Vercel Python function does not fit: spaCy plus the Spanish model measured about 280 MB against a 250 MB limit, so it runs as a container (or on the home Mac). The lesson pipeline uses it, when ANALYSIS_URL and ANALYSIS_KEY are set, to resolve each written form to its dictionary word for lexicon lookup, and records the forms. If it is down, lessons build without it.
+- C2 (next): detect grammar patterns by rules over the analysis (haber + participle and so on), take the verb list and tense from the analysis, build conjugation tables in code, then check against stored lessons and switch the LLM off for those jobs.
