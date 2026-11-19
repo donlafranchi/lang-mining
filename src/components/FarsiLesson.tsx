@@ -1,5 +1,6 @@
 "use client";
 
+import { orderedConjugation } from "@/lib/conjugation-order";
 import { allFarsiIdioms, allFarsiVerbs, allFarsiWords } from "@/lib/enrichment/flatten";
 import type { FarsiEnrichment, FarsiIdiom, FarsiVerb, FarsiWord } from "@/lib/enrichment/farsi-schema";
 import { lessonPatterns } from "@/lib/patterns";
@@ -227,7 +228,7 @@ function VerbList({ items }: { items: FarsiVerb[] }) {
             </div>
             <table className="conj">
               <tbody>
-                {Object.entries(v.conjugation_table).map(([pronoun, form]) => (
+                {orderedConjugation(v.conjugation_table).map(([pronoun, form]) => (
                   <tr key={pronoun}>
                     <td>
                       <Fa>{pronoun}</Fa>

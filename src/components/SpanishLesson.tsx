@@ -1,5 +1,6 @@
 "use client";
 
+import { orderedConjugation } from "@/lib/conjugation-order";
 import Link from "next/link";
 import { allIdioms, allVerbs, allVocab, keyWords } from "@/lib/enrichment/flatten";
 import type { Enrichment, Idiom, ReflexiveKind, Verb, Vocab } from "@/lib/enrichment/schema";
@@ -250,7 +251,7 @@ function VerbList({ items }: { items: Verb[] }) {
             </div>
             <table className="conj">
               <tbody>
-                {Object.entries(v.conjugation_table).map(([pronoun, form]) => (
+                {orderedConjugation(v.conjugation_table).map(([pronoun, form]) => (
                   <tr key={pronoun}>
                     <td>{pronoun}</td>
                     <td>{form}</td>
