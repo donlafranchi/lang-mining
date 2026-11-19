@@ -135,4 +135,92 @@ export const SPANISH_PATTERNS: Pattern[] = [
     ],
     hint: "ser (any tense) + a past participle that agrees with the subject, often with por",
   },
+  {
+    id: "gustar_type",
+    title: "Liking things (me gusta, me falta, me duele)",
+    build: "me / te / le / nos / les + gusta (one thing) or gustan (many things) + the thing",
+    explanation:
+      "The thing you like is the subject, so the verb agrees with it and the person is an indirect pronoun: “me gusta el café” is literally “the coffee pleases me”. Doler, faltar, encantar, importar and interesar work the same way. Add “a ella” or “a Juan” in front for emphasis or to say who.",
+    examples: [
+      { text: "Me gusta el café.", english: "I like coffee." },
+      { text: "Nos gustan las playas.", english: "We like the beaches." },
+      { text: "¿Te gusta bailar?", english: "Do you like to dance?" },
+      { text: "A ella le encanta la música.", english: "She loves music." },
+      { text: "Me duele la cabeza.", english: "My head hurts." },
+      { text: "Nos falta tiempo.", english: "We are short of time." },
+    ],
+    hint: "gustar-type verbs (gustar, encantar, doler, faltar, importar, interesar) with me/te/le/nos/les, such as me gusta or le duele",
+  },
+  {
+    id: "object_pronouns",
+    title: "Pronouns before the verb (lo vi, se lo di)",
+    build: "me, te, lo, la, nos, los, las, le, les go before a conjugated verb, or attach to an infinitive, gerund or command",
+    explanation:
+      "They sit right before the verb: “lo vi”, I saw it. With an infinitive or command they attach to the end: “quiero verlo” or “dámelo”. When le or les meets lo, la, los or las, it becomes se: “se lo di”, I gave it to him.",
+    examples: [
+      { text: "Lo vi ayer.", english: "I saw him/it yesterday." },
+      { text: "Quiero verlo. / Lo quiero ver.", english: "I want to see it." },
+      { text: "Me lo dio mi madre.", english: "My mother gave it to me." },
+      { text: "Se lo dije a Ana.", english: "I told it to Ana." },
+      { text: "Dámelo, por favor.", english: "Give it to me, please." },
+    ],
+    hint: "object pronouns (me, te, lo, la, nos, los, las, le, les, se lo) before a verb or attached to it, such as se lo di or dámelo",
+  },
+  {
+    id: "ser_estar",
+    title: "Ser or estar (es alta, está cansada)",
+    build: "ser for what something is; estar for where it is and how it is right now",
+    explanation:
+      "Both mean “to be”. Ser is identity, origin, characteristics and where an event takes place. Estar is location, temporary state and results. Some adjectives change meaning: “es aburrido” is boring, “está aburrido” is bored.",
+    examples: [
+      { text: "Ella es alta.", english: "She is tall." },
+      { text: "Ella está cansada.", english: "She is tired." },
+      { text: "Es de Chile.", english: "He is from Chile." },
+      { text: "Está en Chile.", english: "He is in Chile (right now)." },
+      { text: "La fiesta es en mi casa.", english: "The party is at my house." },
+      { text: "Estoy aburrido. / Soy aburrido.", english: "I am bored. / I am boring." },
+    ],
+    hint: "ser or estar with an adjective or place where the choice carries meaning, such as es alta, está cansada, está en Chile; only when the paragraph shows a clear contrast or a notable use",
+  },
+  {
+    id: "commands",
+    title: "Commands (habla, no comas, venga)",
+    build: "tú: the él form (habla, come). Negative and usted: the present subjunctive (no hables, hable)",
+    explanation:
+      "To tell someone to do something. The affirmative tú command looks like the he/she present form, with a few irregular ones: ven, ten, haz, di, sal, ve, pon, sé. A negative command borrows the subjunctive: “come” but “no comas”. Pronouns attach to the end of an affirmative command.",
+    examples: [
+      { text: "Habla más despacio.", english: "Speak more slowly." },
+      { text: "No comas eso.", english: "Don't eat that." },
+      { text: "Ven aquí.", english: "Come here." },
+      { text: "Pase, por favor.", english: "Come in, please (to one person you address as usted)." },
+      { text: "Díganme la verdad.", english: "Tell me the truth (to several people)." },
+    ],
+    hint: "commands to someone (imperative), such as habla, no comas, ven, pase, díganme",
+  },
+  {
+    id: "hace_time",
+    title: "Time ago (hace dos años)",
+    build: "hace + a length of time, and a verb in the past (ago) or hace … que + present (for)",
+    explanation:
+      "“Hace” plus a length of time means that long ago: “llegué hace una hora”. Start with it and add “que”, and it means how long something has been going on: “hace dos años que estudio español”, I have been studying Spanish for two years.",
+    examples: [
+      { text: "Llegué hace una hora.", english: "I arrived an hour ago." },
+      { text: "Hace dos años que estudio español.", english: "I have been studying Spanish for two years." },
+      { text: "Nos conocimos hace cinco años.", english: "We met five years ago." },
+      { text: "Hace mucho que no te veo.", english: "I haven't seen you in a long time." },
+    ],
+    hint: "hace + a length of time, such as hace dos años or hace mucho que",
+  },
+  {
+    id: "llevar_gerund",
+    title: "For how long (llevo tres años viviendo aquí)",
+    build: "llevar + length of time + gerund",
+    explanation: "How long someone has been doing something. “Llevar” here means “to have been”, not “to carry”.",
+    examples: [
+      { text: "Llevo tres años viviendo aquí.", english: "I have been living here for three years." },
+      { text: "Lleva dos horas esperando.", english: "She has been waiting for two hours." },
+      { text: "Llevamos todo el día trabajando.", english: "We have been working all day." },
+    ],
+    hint: "llevar + a length of time + a gerund, such as llevo tres años viviendo",
+  },
 ];
