@@ -23,6 +23,24 @@ describe("httpAnalyzer", () => {
   });
 });
 
+describe("httpAnalyzer conjugate", () => {
+  const conj = { lemma: "dar", irregular: true, mood: "indicativo", tense: "presente", table: { yo: "doy" } };
+  it("posts the verbs to /conjugate and returns the tables", async () => {
+    const f = vi.fn(async () => ok({ language: "es", verbs: [conj, null] }));
+    const a = httpAnalyzer("https://svc.example", "k", f as unknown as typeof fetch);
+    const out = await a.conjugate!("es", [{ lemma: "dar", morph: "" }, { lemma: "xyz", morph: "" }]);
+    expect(out).toEqual([conj, null]);
+    expect((f.mock.calls[0] as unknown as [string])[0]).toBe("https://svc.example/conjugate");
+  });
+  it("does no request for no verbs and fails on a wrong count", async () => {
+    const f = vi.fn(async () => ok({ verbs: [] }));
+    const a = httpAnalyzer("https://x", "k", f as unknown as typeof fetch);
+    expect(await a.conjugate!("es", [])).toEqual([]);
+    expect(f).not.toHaveBeenCalled();
+    await expect(a.conjugate!("es", [{ lemma: "dar", morph: "" }])).rejects.toThrow(/unexpected/);
+  });
+});
+
 describe("analyzerFromEnv", () => {
   it("is off unless both settings are present", () => {
     expect(analyzerFromEnv({})).toBeNull();

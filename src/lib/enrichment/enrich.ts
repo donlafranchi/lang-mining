@@ -11,7 +11,8 @@ import { lexiconKey, normalizePos } from "../lexicon/model";
 import { knownToFarsiWord, knownToVocab, lookupTokens, orderByAppearance, splitKnown, type KnownWord, type LemmaHint } from "../lexicon/lookup";
 import type { LexiconStore } from "../lexicon/store";
 import { tokens } from "../highlight";
-import { mergeBatches, parseBatch, type Enrichment, type ParseResult } from "./schema";
+import { mergeBatches, parseBatch, type Enrichment, type ParseResult, type Verb } from "./schema";
+import { codeVerbQueries, codeVerbsByParagraph } from "./verbs-code";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -126,6 +127,17 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promis
  * Split the source into paragraphs in code, mine them in batches a few at a time, and put the results back
  * together. The target-language text in the lesson is the source itself, never model output.
  */
+const MAX_VERBS_PER_PARAGRAPH = 10;
+
+/** How many verb forms per paragraph the code explains, matching what the model was asked for. */
+const CODE_VERB_CAP: Record<HelpLevel, number> = { full: 8, medium: 5, light: 3 };
+
+/** Code-built verbs first, then the model's for any form the code did not do, up to what a paragraph can hold. */
+function mergeVerbs(code: Verb[], model: Verb[]): Verb[] {
+  const have = new Set(code.map((v) => v.form_in_source.toLowerCase()));
+  return [...code, ...model.filter((v) => !have.has(v.form_in_source.toLowerCase()))].slice(0, MAX_VERBS_PER_PARAGRAPH);
+}
+
 async function enrichInBatches<R, L>(args: {
   text: string;
   language: Language;
@@ -141,6 +153,7 @@ async function enrichInBatches<R, L>(args: {
     explained: Map<number, { token: string; word: KnownWord }[]>,
     paragraphs: string[],
     patterns: PatternUse[][] | null,
+    verbs: Verb[][] | null,
   ) => L;
   /** Finds grammar patterns from the analysis, so the model need not. */
   detectPatterns?: (analysis: ParagraphAnalysis, text: string) => PatternUse[];
@@ -161,6 +174,8 @@ async function enrichInBatches<R, L>(args: {
   // Words our own lexicon already knows are explained from it, and the model is told to leave them out.
   const skips = new Map<number, string[]>();
   const explained = new Map<number, { token: string; word: KnownWord }[]>();
+  let verbsByCode: Verb[][] | null = null;
+  const verbSkips = new Map<number, string[]>();
   if (args.lexicon) {
     const hints = new Map<string, LemmaHint>();
     if (analyses) {
@@ -173,6 +188,21 @@ async function enrichInBatches<R, L>(args: {
       skips.set(i + 1, split.skip);
       explained.set(i + 1, split.explain);
     });
+
+    // Verbs the code can conjugate come from the service, not the model. If it fails the model lists them as before.
+    if (analyses && args.language === "es" && args.analyzer?.conjugate) {
+      try {
+        const queries = codeVerbQueries(analyses.map((a) => a.tokens), known, CODE_VERB_CAP[args.help]);
+        const tables = await args.analyzer.conjugate("es", queries.map(({ lemma, morph }) => ({ lemma, morph })));
+        const byParagraph = codeVerbsByParagraph(paragraphs.length, queries, tables, known);
+        if (byParagraph.some((v) => v.length > 0)) {
+          verbsByCode = byParagraph;
+          byParagraph.forEach((verbs, i) => verbSkips.set(i + 1, verbs.map((v) => v.form_in_source)));
+        }
+      } catch (err) {
+        console.error("conjugation skipped", err instanceof Error ? err.message : err);
+      }
+    }
   }
 
   // Patterns found by rules replace the model's, so it is not asked for them.
@@ -182,7 +212,7 @@ async function enrichInBatches<R, L>(args: {
   const results = await mapLimit(batches, BATCH_CONCURRENCY, (batch: NumberedParagraph[]) =>
     completeValidated({
       system,
-      messages: [{ role: "user", content: buildBatchUserPrompt(batch, skips) }],
+      messages: [{ role: "user", content: buildBatchUserPrompt(batch, skips, verbSkips) }],
       complete: args.complete,
       parse: (raw) =>
         args.parse(
@@ -192,7 +222,7 @@ async function enrichInBatches<R, L>(args: {
     }),
   );
   const lesson = args.merge(paragraphs, results);
-  return args.inject ? args.inject(lesson, explained, paragraphs, patternsByCode) : lesson;
+  return args.inject ? args.inject(lesson, explained, paragraphs, patternsByCode, verbsByCode) : lesson;
 }
 
 export async function enrichText(args: {
@@ -247,11 +277,12 @@ export async function enrichText(args: {
     lexicon,
     analyzer,
     detectPatterns: (analysis, text) => detectSpanishPatterns(analysis.tokens, text),
-    inject: (lesson, explained, paragraphs, patterns) => ({
+    inject: (lesson, explained, paragraphs, patterns, verbs) => ({
       ...lesson,
       paragraphs: lesson.paragraphs.map((p, i) => ({
         ...p,
         ...(patterns ? { patterns: patterns[i] } : {}),
+        ...(verbs ? { verbs: mergeVerbs(verbs[i], p.verbs) } : {}),
         vocab: orderByAppearance(
           paragraphs[i],
           [...(explained.get(i + 1) ?? []).map((x) => knownToVocab(x.token, x.word)), ...p.vocab],

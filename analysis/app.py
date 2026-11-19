@@ -10,9 +10,11 @@ from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from analyzers import analyze
+from conjugation import conjugate
 
 MAX_PARAGRAPHS = 200
 MAX_CHARS = 100_000
+MAX_VERBS = 200
 
 app = FastAPI(title="lang-mining analysis", docs_url=None, redoc_url=None)
 
@@ -20,6 +22,17 @@ app = FastAPI(title="lang-mining analysis", docs_url=None, redoc_url=None)
 class AnalyzeRequest(BaseModel):
     language: Literal["es", "fa"]
     paragraphs: list[str] = Field(max_length=MAX_PARAGRAPHS)
+
+
+class VerbRequest(BaseModel):
+    lemma: str = Field(min_length=1, max_length=60)
+    # spaCy's grammar features for the form as written, for example "Mood=Ind Tense=Past Person=3".
+    morph: str = Field(default="", max_length=200)
+
+
+class ConjugateRequest(BaseModel):
+    language: Literal["es"]
+    verbs: list[VerbRequest] = Field(max_length=MAX_VERBS)
 
 
 def check_key(provided: str | None) -> None:
@@ -40,3 +53,16 @@ def analyze_route(body: AnalyzeRequest, x_analysis_key: str | None = Header(defa
     if sum(len(p) for p in body.paragraphs) > MAX_CHARS:
         raise HTTPException(status_code=413, detail="Too much text.")
     return {"language": body.language, "paragraphs": analyze(body.language, body.paragraphs)}
+
+
+@app.post("/conjugate")
+def conjugate_route(body: ConjugateRequest, x_analysis_key: str | None = Header(default=None)) -> dict:
+    check_key(x_analysis_key)
+    results = []
+    for v in body.verbs:
+        try:
+            results.append(conjugate(v.lemma, v.morph))
+        except Exception:
+            # A verb the conjugator cannot handle is left out, never an error for the whole lesson.
+            results.append(None)
+    return {"language": body.language, "verbs": results}

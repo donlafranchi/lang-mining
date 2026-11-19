@@ -109,12 +109,17 @@ export function buildSystemPrompt(
 }
 
 /** The numbered paragraphs for one Spanish batch. */
-export function buildBatchUserPrompt(batch: { n: number; text: string }[], skips?: Map<number, string[]>): string {
+export function buildBatchUserPrompt(batch: { n: number; text: string }[], skips?: Map<number, string[]>, verbSkips?: Map<number, string[]>): string {
   // One line that does not start with a bracketed number, so it is not mistaken for a paragraph.
   const lists = batch
     .map((p) => ({ n: p.n, words: skips?.get(p.n) ?? [] }))
     .filter((x) => x.words.length > 0)
     .map((x) => `paragraph ${x.n}: ${x.words.join(", ")}`);
   const line = lists.length > 0 ? `Words the app already explains, so leave them out of the word list (still list verbs as asked): ${lists.join("; ")}\n\n` : "";
-  return `${line}Paragraphs to mine:\n\n${batch.map((p) => `[${p.n}] ${p.text}`).join("\n\n")}`;
+  const verbLists = batch
+    .map((p) => ({ n: p.n, words: verbSkips?.get(p.n) ?? [] }))
+    .filter((x) => x.words.length > 0)
+    .map((x) => `paragraph ${x.n}: ${x.words.join(", ")}`);
+  const verbLine = verbLists.length > 0 ? `Verb forms the app already explains, so leave them out of the verbs list: ${verbLists.join("; ")}\n\n` : "";
+  return `${line}${verbLine}Paragraphs to mine:\n\n${batch.map((p) => `[${p.n}] ${p.text}`).join("\n\n")}`;
 }
