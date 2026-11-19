@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DeleteButton } from "@/components/DeleteButton";
+import { RenameTitle } from "@/components/RenameTitle";
 import { SessionView } from "@/components/SessionView";
 import { listSeenPatterns } from "@/lib/pattern-seen";
 import { coreRanksFor, coreWords } from "@/lib/core";
@@ -59,7 +60,7 @@ export default async function SessionPage(props: PageProps<"/sessions/[id]">) {
         ← Back
       </Link>
       <div className="brand">
-        <h1 dir="auto">{detail.session.title}</h1>
+        <RenameTitle id={detail.session.id} title={detail.session.title} />
       </div>
       <SessionView
         session={{ ...detail.session, status: effectiveStatus(detail.session) }}

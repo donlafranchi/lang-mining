@@ -3,6 +3,7 @@ import { explainSaveError, explainUsersError } from "./db-errors";
 import { enrichText, type Lesson } from "./enrichment/enrich";
 import { farsiEnrichmentSchema } from "./enrichment/farsi-schema";
 import { enrichmentSchema, type Dialect } from "./enrichment/schema";
+import { cleanTitle } from "./titles";
 import { fetchArticleText, looksLikeUrl } from "./ingest/extract";
 import type { HelpLevel } from "./help";
 import { resolveLanguage, type Language } from "./languages";
@@ -73,7 +74,7 @@ export async function createSession(args: {
   input: string;
   language: Language;
   userId: string;
-}): Promise<{ id: string; text: string }> {
+}): Promise<{ id: string; text: string; autoTitle: string | null }> {
   const input = args.input.trim();
   if (!input) throw new UserFacingError("Paste some text or a link first.");
 
@@ -127,11 +128,48 @@ export async function createSession(args: {
     throw new Error(`Could not store the source text: ${sourceError.message}`);
   }
 
-  return { id: session.id, text };
+  // A stand-in title (the start of the text, or the site name) can be replaced by the model's title once the lesson
+  // is built. A page's own title is already a good name, so it stays.
+  const autoTitle = pageTitle ? null : titleFor(text, sourceUrl);
+  return { id: session.id, text, autoTitle };
+}
+
+/**
+ * Give the lesson the model's title, but only while it still has the stand-in title. If the person renamed it in the
+ * meantime the match fails and their name stays. A failure here never fails the lesson.
+ */
+async function applyModelTitle(id: string, autoTitle: string | null, modelTitle: string | undefined): Promise<void> {
+  const cleaned = cleanTitle(modelTitle);
+  if (!autoTitle || !cleaned.ok) return;
+  const { error } = await db().from("sessions").update({ title: cleaned.title }).eq("id", id).eq("title", autoTitle);
+  if (error) console.error("could not set the model title", error.message);
+}
+
+/** Rename a lesson. Someone else's lesson is "not found". */
+export async function renameSession(id: string, userId: string, rawTitle: unknown): Promise<string> {
+  const cleaned = cleanTitle(rawTitle);
+  if (!cleaned.ok) throw new UserFacingError(cleaned.message, 400);
+  const { data, error } = await db()
+    .from("sessions")
+    .update({ title: cleaned.title })
+    .eq("id", id)
+    .eq("user_id", userId)
+    .select("id");
+  if (error) throw new Error(`Could not rename the lesson: ${error.message}`);
+  if (!data || data.length === 0) throw new UserFacingError("That lesson is already gone.", 404);
+  return cleaned.title;
 }
 
 /** Builds the lesson for a freshly created session. Never throws: failures are recorded on the row. */
-export async function buildSession(args: { id: string; text: string; language: Language; help: HelpLevel; model: ModelId }): Promise<void> {
+export async function buildSession(args: {
+  id: string;
+  text: string;
+  language: Language;
+  help: HelpLevel;
+  model: ModelId;
+  /** The stand-in title to replace with the model's title. Null leaves the title alone. */
+  autoTitle?: string | null;
+}): Promise<void> {
   try {
     const enrichment = await enrichText({
       text: args.text,
@@ -141,6 +179,7 @@ export async function buildSession(args: { id: string; text: string; language: L
     });
     await saveEnrichment(args.id, args.model, enrichment);
     await db().from("sessions").update({ status: "ready", error: null }).eq("id", args.id);
+    await applyModelTitle(args.id, args.autoTitle ?? null, enrichment.title);
   } catch (err) {
     console.error("buildSession failed", err);
     const message = err instanceof Error ? err.message : "Enrichment failed.";

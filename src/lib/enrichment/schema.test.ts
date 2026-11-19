@@ -321,3 +321,18 @@ describe("full help lists every word", () => {
     expect(r.ok).toBe(true);
   });
 });
+
+describe("model title", () => {
+  const para = { n: 1, english: "e", key_phrase: { spanish: "a", english: "b" }, verbs: [], vocab: [], idioms: [] };
+
+  it("is optional in a batch answer", () => {
+    expect(parseBatch(JSON.stringify({ gist: "g", grammar_notes: [], paragraphs: [para] }), [1]).ok).toBe(true);
+  });
+
+  it("is carried into the merged lesson from the first batch that has one", () => {
+    const a = { gist: "a", grammar_notes: [], paragraphs: [{ ...para, patterns: [] }] };
+    const b = { gist: "b", grammar_notes: [], title: "The island", paragraphs: [{ ...para, n: 2, patterns: [] }] };
+    const lesson = mergeBatches(["uno", "dos"], [a, b]);
+    expect(lesson.title).toBe("The island");
+  });
+});

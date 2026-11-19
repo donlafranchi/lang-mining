@@ -31,8 +31,8 @@ export async function POST(request: Request) {
   const model = resolveModel(body.model);
 
   try {
-    const { id, text } = await createSession({ input: body.input, language, userId: user.id });
-    after(() => buildSession({ id, text, language, help, model }));
+    const { id, text, autoTitle } = await createSession({ input: body.input, language, userId: user.id });
+    after(() => buildSession({ id, text, language, help, model, autoTitle }));
     return NextResponse.json({ id, status: "processing" });
   } catch (err) {
     if (err instanceof UserFacingError) {

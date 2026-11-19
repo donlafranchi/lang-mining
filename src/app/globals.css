@@ -562,3 +562,9 @@ a.btn {
   font-size: 0.85rem;
   color: var(--muted);
 }
+
+.title-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
