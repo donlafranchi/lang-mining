@@ -7,7 +7,7 @@
 //
 // Bump VERSION to drop every cache from older versions.
 
-const VERSION = "v1";
+const VERSION = "v2";
 const STATIC_CACHE = `static-${VERSION}`;
 const OFFLINE_URL = "/offline";
 const PRECACHE = [OFFLINE_URL, "/icons/icon-192.png", "/icons/icon-512.png"];
@@ -94,4 +94,38 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(cacheFirst(request));
   }
   // Everything else (the API, page data requests) goes straight to the network, untouched.
+});
+
+// Push: a lesson finished. The server sends { title, body, url }; tapping the notification opens that lesson.
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {
+    data = {};
+  }
+  const title = data.title || "Lesson ready";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: data.body || "",
+      icon: "/icons/icon-192.png",
+      data: { url: data.url || "/" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+      for (const w of windows) {
+        if ("focus" in w) {
+          w.navigate(url).catch(() => undefined);
+          return w.focus();
+        }
+      }
+      return self.clients.openWindow(url);
+    }),
+  );
 });

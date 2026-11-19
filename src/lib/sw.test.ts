@@ -229,3 +229,38 @@ describe("service worker: static files", () => {
     expect(Math.max(...sizes)).toBeLessThanOrEqual(130);
   });
 });
+
+describe("service worker: push", () => {
+  function loadPush(windows: { focus: () => Promise<unknown>; navigate: (u: string) => Promise<unknown> }[] = []) {
+    const listeners: Record<string, Listener> = {};
+    const showNotification = vi.fn(() => Promise.resolve());
+    const openWindow = vi.fn(() => Promise.resolve());
+    const self = {
+      addEventListener: (t: string, fn: Listener) => {
+        listeners[t] = fn;
+      },
+      location: { origin: ORIGIN },
+      registration: { showNotification },
+      clients: { claim: () => Promise.resolve(), matchAll: () => Promise.resolve(windows), openWindow },
+      skipWaiting: () => Promise.resolve(),
+    };
+    vm.runInNewContext(source, { self, caches: makeCaches("x", []), fetch: vi.fn(), URL, Promise, Response: { error: () => ({}) } });
+    return { listeners, showNotification, openWindow };
+  }
+
+  it("shows the notification the server sent", async () => {
+    const sw = loadPush();
+    let pending: Promise<unknown> | undefined;
+    sw.listeners.push({ data: { json: () => ({ title: "Lesson ready", body: "Mi día", url: "/sessions/abc" }) }, waitUntil: (p: Promise<unknown>) => (pending = p) });
+    await pending;
+    expect(sw.showNotification).toHaveBeenCalledWith("Lesson ready", expect.objectContaining({ body: "Mi día", data: { url: "/sessions/abc" } }));
+  });
+
+  it("opens the lesson when the notification is tapped", async () => {
+    const sw = loadPush();
+    let pending: Promise<unknown> | undefined;
+    sw.listeners.notificationclick({ notification: { close: () => undefined, data: { url: "/sessions/abc" } }, waitUntil: (p: Promise<unknown>) => (pending = p) });
+    await pending;
+    expect(sw.openWindow).toHaveBeenCalledWith("/sessions/abc");
+  });
+});

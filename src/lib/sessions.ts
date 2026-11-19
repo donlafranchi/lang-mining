@@ -11,6 +11,7 @@ import { fetchArticleText, looksLikeUrl } from "./ingest/extract";
 import type { HelpLevel } from "./help";
 import { resolveLanguage, type Language } from "./languages";
 import type { ModelId } from "./models";
+import { notifyLesson } from "./push";
 import { db } from "./supabase";
 
 export const MIN_TEXT_CHARS = 20;
@@ -185,11 +186,13 @@ export async function buildSession(args: {
     await saveEnrichment(args.id, args.model, enrichment);
     await db().from("sessions").update({ status: "ready", error: null }).eq("id", args.id);
     await applyModelTitle(args.id, args.autoTitle ?? null, enrichment.title);
+    await notifyLesson(args.id, true);
     await harvestSafely(supabaseLexiconStore(), args.language, enrichment);
   } catch (err) {
     console.error("buildSession failed", err);
     const message = err instanceof Error ? err.message : "Enrichment failed.";
     await db().from("sessions").update({ status: "failed", error: message }).eq("id", args.id);
+    await notifyLesson(args.id, false);
   }
 }
 
@@ -229,6 +232,7 @@ export async function finishRerun(args: { id: string; text: string; language: La
     });
     await saveEnrichment(args.id, args.model, enrichment);
     await db().from("sessions").update({ status: "ready", error: null }).eq("id", args.id);
+    await notifyLesson(args.id, true);
     await harvestSafely(supabaseLexiconStore(), args.language, enrichment);
   } catch (err) {
     console.error("rerun failed", err);
