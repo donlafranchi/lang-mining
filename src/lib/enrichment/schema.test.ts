@@ -175,6 +175,12 @@ describe("parseBatch", () => {
     expect(parseBatch(JSON.stringify(lemma), [1]).ok).toBe(false);
   });
 
+  it("allows an empty vocab example, which full and medium help use", () => {
+    const empty = batch([1]);
+    empty.paragraphs[0].vocab[0].example_fragment = "";
+    expect(parseBatch(JSON.stringify(empty), [1]).ok).toBe(true);
+  });
+
   it("still enforces the short-fragment rule on vocab examples", () => {
     const bad = batch([1]);
     bad.paragraphs[0].vocab[0].example_fragment = "palabra ".repeat(40);

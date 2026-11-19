@@ -1,6 +1,6 @@
 import type { Language } from "./languages";
 
-// How many words a lesson glosses. Only Farsi uses it for now: a beginner needs every word, a stronger learner does not.
+// How many words a lesson glosses: a beginner needs every word, a stronger learner does not.
 export const HELP_LEVELS = [
   { id: "full", label: "Full help (every word)" },
   { id: "medium", label: "Medium (content words)" },
@@ -9,15 +9,18 @@ export const HELP_LEVELS = [
 
 export type HelpLevel = (typeof HELP_LEVELS)[number]["id"];
 
-export const DEFAULT_HELP: HelpLevel = "full";
+/** Spanish keeps today's light lessons by default. Farsi starts at full help, since most of its words are new. */
+export function defaultHelp(language: Language): HelpLevel {
+  return language === "fa" ? "full" : "light";
+}
 
 export function isHelpLevel(value: unknown): value is HelpLevel {
   return typeof value === "string" && HELP_LEVELS.some((h) => h.id === value);
 }
 
-/** A missing or unknown level means full help. */
-export function resolveHelp(value: unknown): HelpLevel {
-  return isHelpLevel(value) ? value : DEFAULT_HELP;
+/** A missing or unknown level means the language's default. */
+export function resolveHelp(value: unknown, language: Language = "es"): HelpLevel {
+  return isHelpLevel(value) ? value : defaultHelp(language);
 }
 
 export function helpLabel(id: HelpLevel): string {
@@ -26,7 +29,12 @@ export function helpLabel(id: HelpLevel): string {
 
 export type BatchLimits = { maxParagraphs: number; maxChars: number };
 
-const SPANISH_LIMITS: BatchLimits = { maxParagraphs: 5, maxChars: 3000 };
+const SPANISH_LIMITS: Record<HelpLevel, BatchLimits> = {
+  // More words per paragraph means more output, so more help means smaller batches. Light is what Spanish always used.
+  full: { maxParagraphs: 3, maxChars: 2000 },
+  medium: { maxParagraphs: 4, maxChars: 2500 },
+  light: { maxParagraphs: 5, maxChars: 3000 },
+};
 
 const FARSI_LIMITS: Record<HelpLevel, BatchLimits> = {
   // Persian script is token heavy and every extra word is more output, so more help means smaller batches.
@@ -37,5 +45,5 @@ const FARSI_LIMITS: Record<HelpLevel, BatchLimits> = {
 
 /** How many paragraphs go into one model call. */
 export function batchLimits(language: Language, help: HelpLevel): BatchLimits {
-  return language === "fa" ? FARSI_LIMITS[help] : SPANISH_LIMITS;
+  return language === "fa" ? FARSI_LIMITS[help] : SPANISH_LIMITS[help];
 }

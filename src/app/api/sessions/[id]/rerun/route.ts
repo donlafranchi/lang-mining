@@ -16,11 +16,12 @@ export async function POST(request: Request, ctx: RouteContext<"/api/sessions/[i
   if (body.model !== undefined && !isModel(body.model)) {
     return NextResponse.json({ error: "Pick a listed model." }, { status: 400 });
   }
-  const help = resolveHelp(body.help);
   const model = resolveModel(body.model);
 
   try {
     const { text, language } = await startRerun(id);
+    // The default level depends on the session's language, so it is resolved once that is known.
+    const help = resolveHelp(body.help, language);
     after(() => finishRerun({ id, text, language, help, model }));
     return NextResponse.json({ ok: true });
   } catch (err) {

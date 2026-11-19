@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { DEFAULT_HELP, isHelpLevel, type HelpLevel } from "@/lib/help";
+import { defaultHelp, isHelpLevel, type HelpLevel } from "@/lib/help";
 import { DEFAULT_LANGUAGE, isLanguage, type Language } from "@/lib/languages";
 import { DEFAULT_MODEL, isModel, type ModelId } from "@/lib/models";
 import { HelpSelect } from "./HelpSelect";
@@ -11,13 +11,14 @@ import { ModelSelect } from "./ModelSelect";
 
 const MODEL_KEY = "lm_model";
 const LANGUAGE_KEY = "lm_language";
-const HELP_KEY = "lm_help";
+// Help is remembered per language: a Farsi beginner may want full help and still read Spanish lightly.
+const helpKey = (language: Language) => `lm_help_${language}`;
 
 export function PasteForm() {
   const router = useRouter();
   const [input, setInput] = useState("");
   const [language, setLanguage] = useState<Language>(DEFAULT_LANGUAGE);
-  const [help, setHelp] = useState<HelpLevel>(DEFAULT_HELP);
+  const [helps, setHelps] = useState<Record<Language, HelpLevel>>({ es: defaultHelp("es"), fa: defaultHelp("fa") });
   const [model, setModel] = useState<ModelId>(DEFAULT_MODEL);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -26,12 +27,17 @@ export function PasteForm() {
   useEffect(() => {
     try {
       const savedLanguage = localStorage.getItem(LANGUAGE_KEY);
-      const savedHelp = localStorage.getItem(HELP_KEY);
+      // lm_help was the Farsi-only key before Spanish had a level.
+      const savedEs = localStorage.getItem(helpKey("es"));
+      const savedFa = localStorage.getItem(helpKey("fa")) ?? localStorage.getItem("lm_help");
       const savedModel = localStorage.getItem(MODEL_KEY);
       // Runs once after mount on purpose: reading localStorage during render would break hydration.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       if (savedLanguage && isLanguage(savedLanguage)) setLanguage(savedLanguage);
-      if (savedHelp && isHelpLevel(savedHelp)) setHelp(savedHelp);
+      setHelps((h) => ({
+        es: savedEs && isHelpLevel(savedEs) ? savedEs : h.es,
+        fa: savedFa && isHelpLevel(savedFa) ? savedFa : h.fa,
+      }));
       if (savedModel && isModel(savedModel)) setModel(savedModel);
     } catch {}
   }, []);
@@ -44,9 +50,9 @@ export function PasteForm() {
   }
 
   function pickHelp(value: HelpLevel) {
-    setHelp(value);
+    setHelps((h) => ({ ...h, [language]: value }));
     try {
-      localStorage.setItem(HELP_KEY, value);
+      localStorage.setItem(helpKey(language), value);
     } catch {}
   }
 
@@ -65,7 +71,7 @@ export function PasteForm() {
       const res = await fetch("/api/sessions", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ input, language, help, model }),
+        body: JSON.stringify({ input, language, help: helps[language], model }),
       });
       const data = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
       if (!res.ok || !data.id) {
@@ -95,7 +101,7 @@ export function PasteForm() {
           disabled={busy}
         />
       </label>
-      {language === "fa" && <HelpSelect value={help} onChange={pickHelp} disabled={busy} />}
+      <HelpSelect value={helps[language]} onChange={pickHelp} disabled={busy} />
       <ModelSelect value={model} onChange={pickModel} disabled={busy} />
       {error && <p className="error">{error}</p>}
       <button className="btn" type="submit" disabled={busy || !input.trim()}>

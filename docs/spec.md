@@ -40,7 +40,7 @@ Share a link, text, or clip from an iPhone. Get a mobile-first Spanish study ses
 
 ## Enrichment JSON schema
 - summary: 2 to 3 sentence gist in English
-- paragraphs[]: spanish (the source paragraph, split in code), english, key_phrase {spanish, english}, verbs[], vocab[], idioms[]
+- paragraphs[]: spanish (the source paragraph, split in code), english, key_phrase {spanish, english}, verbs[], vocab[], idioms[]. A help level (full, medium, light) sets how many words get glossed per paragraph, default light for Spanish and full for Farsi
   - vocab[]: lemma, surface_form, part_of_speech, english, example_fragment, level
   - idioms[]: phrase, literal_meaning, actual_meaning, region_tags[], register
   - verbs[]: infinitive, english, form_in_source, form_english, tense, mood, person, conjugation_table, irregular, reflexive (null, or infinitive_reflexive, english, kind, explanation)

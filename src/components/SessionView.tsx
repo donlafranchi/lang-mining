@@ -6,7 +6,7 @@ import type { Lesson } from "@/lib/enrichment/enrich";
 import type { FarsiEnrichment } from "@/lib/enrichment/farsi-schema";
 import type { Enrichment } from "@/lib/enrichment/schema";
 import type { SessionRow } from "@/lib/sessions";
-import { DEFAULT_HELP, isHelpLevel, type HelpLevel } from "@/lib/help";
+import { defaultHelp, isHelpLevel, type HelpLevel } from "@/lib/help";
 import { DEFAULT_MODEL, modelLabel, type ModelId } from "@/lib/models";
 import { STALE_AFTER_MS } from "@/lib/status";
 import { FarsiLesson } from "./FarsiLesson";
@@ -31,7 +31,7 @@ export function SessionView(props: {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("read");
   const [model, setModel] = useState<ModelId>(DEFAULT_MODEL);
-  const [help, setHelp] = useState<HelpLevel>(DEFAULT_HELP);
+  const [help, setHelp] = useState<HelpLevel>(defaultHelp(props.session.language));
   const [busy, setBusy] = useState(false);
   const [rerunStartedAt, setRerunStartedAt] = useState<number | null>(null);
   const [error, setError] = useState("");
@@ -39,12 +39,14 @@ export function SessionView(props: {
   // Start from the help level picked on the paste form, so a retry builds the same kind of lesson.
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("lm_help");
+      const saved =
+        localStorage.getItem(`lm_help_${props.session.language}`) ??
+        (props.session.language === "fa" ? localStorage.getItem("lm_help") : null);
       // Runs once after mount on purpose: reading localStorage during render would break hydration.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       if (saved && isHelpLevel(saved)) setHelp(saved);
     } catch {}
-  }, []);
+  }, [props.session.language]);
 
   const enrichment = props.enrichment;
   const initialBuild = props.session.status === "processing";
@@ -103,7 +105,7 @@ export function SessionView(props: {
           {props.sourceAvailable ? (
             !waiting && (
               <>
-                {props.session.language === "fa" && <HelpSelect value={help} onChange={setHelp} disabled={busy} />}
+                <HelpSelect value={help} onChange={setHelp} disabled={busy} />
                 <ModelSelect value={model} onChange={setModel} disabled={busy} />
                 <button className="btn" onClick={build} disabled={busy}>
                   {busy

@@ -1,4 +1,4 @@
-import { batchLimits, DEFAULT_HELP, type HelpLevel } from "../help";
+import { batchLimits, defaultHelp, type HelpLevel } from "../help";
 import { DEFAULT_LANGUAGE, type Language } from "../languages";
 import { mergeFarsiBatches, parseFarsiBatch, type FarsiEnrichment } from "./farsi-schema";
 import { batchParagraphs, splitParagraphs, MAX_ARTICLE_CHARS, type NumberedParagraph } from "./paragraphs";
@@ -149,7 +149,7 @@ async function enrichInBatches<R, L>(args: {
 export async function enrichText(args: {
   text: string;
   language?: Language;
-  /** How many words a Farsi lesson glosses. Ignored for Spanish. */
+  /** How many words the lesson glosses. Defaults to light for Spanish and full for Farsi. */
   help?: HelpLevel;
   complete: CompleteFn;
 }): Promise<Lesson> {
@@ -157,7 +157,7 @@ export async function enrichText(args: {
   if (!text) throw new EnrichmentError("Input text is empty.");
 
   const language = args.language ?? DEFAULT_LANGUAGE;
-  const help = args.help ?? DEFAULT_HELP;
+  const help = args.help ?? defaultHelp(language);
 
   if (language === "fa") {
     return enrichInBatches({ text, language, help, complete: args.complete, parse: parseFarsiBatch, merge: mergeFarsiBatches });

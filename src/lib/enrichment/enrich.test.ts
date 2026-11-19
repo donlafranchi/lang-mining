@@ -63,6 +63,52 @@ describe("buildSystemPrompt (Spanish)", () => {
   });
 });
 
+describe("buildSystemPrompt (Spanish help levels)", () => {
+  it("full help glosses every distinct word, small words included", () => {
+    const prompt = buildSystemPrompt("es", "full");
+    expect(prompt).toMatch(/EVERY distinct word/);
+    expect(prompt).not.toMatch(/content word/);
+    expect(prompt).toMatch(/every conjugated verb, up to 8/);
+  });
+
+  it("medium help glosses every content word and skips the basic small words", () => {
+    const prompt = buildSystemPrompt("es", "medium");
+    expect(prompt).toMatch(/every distinct content word/);
+    expect(prompt).toMatch(/skip/i);
+    expect(prompt).not.toMatch(/EVERY distinct word/);
+    expect(prompt).toMatch(/up to 5 notable conjugated verbs/);
+  });
+
+  it("light help asks for a handful of key words, with an example each, as before", () => {
+    const prompt = buildSystemPrompt("es", "light");
+    expect(prompt).toMatch(/up to 6 of the most useful/);
+    expect(prompt).toMatch(/at most 140 characters/);
+    expect(prompt).toMatch(/up to 3 notable conjugated verbs/);
+    expect(prompt).not.toMatch(/EVERY distinct word/);
+  });
+
+  it("leaves the example empty at full and medium, since the paragraph shows the word", () => {
+    expect(buildSystemPrompt("es", "full")).toMatch(/always an empty string/);
+    expect(buildSystemPrompt("es", "medium")).toMatch(/always an empty string/);
+    expect(buildSystemPrompt("es", "light")).not.toMatch(/always an empty string/);
+  });
+
+  it("keeps the reflexive block, the numbered paragraphs and JSON-only at every level", () => {
+    for (const help of ["full", "medium", "light"] as const) {
+      const prompt = buildSystemPrompt("es", help);
+      expect(prompt).toMatch(/reflexive pronoun/i);
+      expect(prompt).toMatch(/EVERY paragraph/);
+      expect(prompt).toMatch(/only (a )?json/i);
+      expect(prompt).not.toMatch(/transliteration/);
+    }
+  });
+
+  it("defaults to light for Spanish", () => {
+    expect(buildSystemPrompt("es")).toBe(buildSystemPrompt("es", "light"));
+    expect(buildSystemPrompt()).toBe(buildSystemPrompt("es", "light"));
+  });
+});
+
 describe("buildBatchUserPrompt", () => {
   it("numbers each paragraph with its global number", () => {
     const text = buildBatchUserPrompt([
@@ -275,11 +321,9 @@ describe("Farsi prompts", () => {
     expect(prompt).not.toMatch(/EVERY distinct word/);
   });
 
-  it("defaults to full help, and Spanish ignores the level", () => {
+  it("defaults to full help for Farsi", () => {
     expect(buildSystemPrompt("fa")).toBe(buildSystemPrompt("fa", "full"));
-    expect(buildSystemPrompt("es")).toBe(buildSystemPrompt("es", "light"));
     expect(buildSystemPrompt("es")).not.toMatch(/transliteration/);
-    expect(buildSystemPrompt()).toBe(buildSystemPrompt("es"));
   });
 
   it("tells the model compound parts is one string", () => {
@@ -346,11 +390,25 @@ describe("enrichText (Farsi)", () => {
     expect(complete).toHaveBeenCalledTimes(2);
   });
 
-  it("keeps Spanish batching the same at any help level", async () => {
-    const a = vi.fn(fakeModel());
-    const b = vi.fn(fakeModel());
-    await enrichText({ text: article(12), language: "es", help: "full", complete: a });
-    await enrichText({ text: article(12), language: "es", help: "light", complete: b });
-    expect(a.mock.calls.length).toBe(b.mock.calls.length);
+  it("uses smaller Spanish batches at higher help, and defaults Spanish to light", async () => {
+    const full = vi.fn(fakeModel());
+    const medium = vi.fn(fakeModel());
+    const light = vi.fn(fakeModel());
+    const unset = vi.fn(fakeModel());
+    await enrichText({ text: article(12), language: "es", help: "full", complete: full });
+    await enrichText({ text: article(12), language: "es", help: "medium", complete: medium });
+    await enrichText({ text: article(12), language: "es", help: "light", complete: light });
+    await enrichText({ text: article(12), language: "es", complete: unset });
+    expect(full).toHaveBeenCalledTimes(4);
+    expect(medium).toHaveBeenCalledTimes(3);
+    expect(light).toHaveBeenCalledTimes(3);
+    expect(unset).toHaveBeenCalledTimes(light.mock.calls.length);
+    expect(unset.mock.calls[0][0].system).toBe(light.mock.calls[0][0].system);
+  });
+
+  it("sends the Spanish level's prompt to the model", async () => {
+    const complete = vi.fn(fakeModel());
+    await enrichText({ text: article(1), language: "es", help: "full", complete });
+    expect(complete.mock.calls[0][0].system).toMatch(/EVERY distinct word/);
   });
 });

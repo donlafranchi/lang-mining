@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Pick a listed model." }, { status: 400 });
   }
   const language = resolveLanguage(body.language);
-  const help = resolveHelp(body.help);
+  const help = resolveHelp(body.help, language);
   const model = resolveModel(body.model);
 
   try {
