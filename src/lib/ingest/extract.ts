@@ -61,15 +61,74 @@ export function validateArticleUrl(raw: string): URL {
   return url;
 }
 
-/** Plain readable text from an HTML page, with navigation, scripts, and styles removed. */
+// Tags that start and end a paragraph. Everything else (links, emphasis, spans) stays inside the paragraph it is in.
+const BLOCK_TAGS = new Set([
+  "ADDRESS", "ARTICLE", "ASIDE", "BLOCKQUOTE", "DD", "DETAILS", "DIV", "DL", "DT", "FIELDSET", "FIGCAPTION", "FIGURE",
+  "FOOTER", "FORM", "H1", "H2", "H3", "H4", "H5", "H6", "HEADER", "HR", "LI", "MAIN", "NAV", "OL", "P", "PRE",
+  "SECTION", "SUMMARY", "TABLE", "TBODY", "TD", "TH", "THEAD", "TR", "UL",
+]);
+const SKIP_TAGS = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE"]);
+// Stands in for a line break while a paragraph is being gathered. Two or more in a row end the paragraph.
+const BREAK = "\u0001";
+
+/**
+ * The article's text with one blank line between paragraphs. Paragraph breaks come from the page's own tags (a
+ * paragraph, a heading, a list item, a double line break), not from whitespace in the HTML, because most sites send
+ * their HTML squashed together with nothing between the tags.
+ */
+function paragraphsFromHtml(html: string): string[] {
+  const root = new JSDOM(`<body>${html}</body>`).window.document.body;
+  const paragraphs: string[] = [];
+  let buffer = "";
+
+  const flush = () => {
+    // Two line breaks in a row start a new paragraph. A single one is just a space.
+    for (const piece of buffer.split(new RegExp(`(?:\\s*${BREAK}\\s*){2,}`))) {
+      const text = piece.replaceAll(BREAK, " ").replace(/\s+/g, " ").trim();
+      if (text) paragraphs.push(text);
+    }
+    buffer = "";
+  };
+
+  const walk = (node: Node) => {
+    for (const child of Array.from(node.childNodes)) {
+      if (child.nodeType === 3) {
+        buffer += child.nodeValue ?? "";
+      } else if (child.nodeType === 1) {
+        const tag = (child as Element).tagName;
+        if (SKIP_TAGS.has(tag)) continue;
+        if (tag === "BR") {
+          buffer += BREAK;
+        } else if (BLOCK_TAGS.has(tag)) {
+          flush();
+          walk(child);
+          flush();
+        } else {
+          walk(child);
+        }
+      }
+    }
+  };
+
+  walk(root);
+  flush();
+  return paragraphs;
+}
+
+/** Plain readable text from an HTML page, with navigation, scripts, and styles removed and the paragraphs kept apart. */
 export function extractArticleText(html: string, url: string): string {
   const dom = new JSDOM(html, { url });
   const article = new Readability(dom.window.document, { charThreshold: 100 }).parse();
-  const text = (article?.textContent ?? "")
-    .replace(/\r/g, "")
-    .replace(/[ \t ]+/g, " ")
-    .replace(/\n\s*\n\s*/g, "\n\n")
-    .trim();
+
+  let text = article?.content ? paragraphsFromHtml(article.content).join("\n\n") : "";
+  if (text.length < MIN_TEXT_CHARS) {
+    // The page had text but no usable tags. Fall back to its plain text rather than giving up.
+    text = (article?.textContent ?? "")
+      .replace(/\r/g, "")
+      .replace(/[ \t\u00a0]+/g, " ")
+      .replace(/\n\s*\n\s*/g, "\n\n")
+      .trim();
+  }
   if (text.length < MIN_TEXT_CHARS) {
     throw new Error("No readable text found on that page. It may need a login or be built with scripts.");
   }
