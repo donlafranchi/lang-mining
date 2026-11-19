@@ -33,7 +33,7 @@ export default async function Home() {
       <UserBar name={user.name} isAdmin={user.isAdmin} />
 
       <div className="brand">
-        <h1>lang-mining</h1>
+        <h1>Hand to Brain</h1>
       </div>
 
       <InstallHint />

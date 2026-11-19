@@ -13,8 +13,8 @@ function pngSize(path: string): string {
 
 describe("web manifest", () => {
   it("installs as a full-screen app that starts at the home screen", () => {
-    expect(m.name).toBe("lang-mining");
-    expect(m.short_name).toBe("lang-mining");
+    expect(m.name).toBe("Hand to Brain");
+    expect(m.short_name).toBe("Hand to Brain");
     expect(m.id).toBe("/");
     expect(m.start_url).toBe("/");
     expect(m.scope).toBe("/");

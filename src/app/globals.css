@@ -655,3 +655,16 @@ button.mark {
   font-size: 1.15rem;
   color: var(--muted);
 }
+
+.loading-screen {
+  min-height: 70vh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+}
+.loading-emoji {
+  font-size: 4.5rem;
+  line-height: 1;
+}
