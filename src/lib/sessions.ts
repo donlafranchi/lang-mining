@@ -51,7 +51,8 @@ function toSessionRow(raw: Record<string, unknown>): SessionRow {
   };
 }
 
-function titleFor(text: string, url: string | null): string {
+function titleFor(text: string, url: string | null, pageTitle = ""): string {
+  if (pageTitle) return pageTitle.length > 80 ? `${pageTitle.slice(0, 80)}…` : pageTitle;
   if (url) return new URL(url).hostname.replace(/^www\./, "");
   const oneLine = text.replace(/\s+/g, " ").trim();
   return oneLine.length > 50 ? `${oneLine.slice(0, 50)}…` : oneLine;
@@ -79,12 +80,14 @@ export async function createSession(args: {
   const isUrl = looksLikeUrl(input);
   let text = input;
   let sourceUrl: string | null = null;
+  let pageTitle = "";
 
   if (isUrl) {
     try {
       const fetched = await fetchArticleText(input);
       text = fetched.text;
       sourceUrl = fetched.finalUrl;
+      pageTitle = fetched.title;
     } catch (err) {
       throw new UserFacingError(err instanceof Error ? err.message : "Could not read that link.");
     }
@@ -98,7 +101,7 @@ export async function createSession(args: {
       user_id: args.userId,
       source_type: isUrl ? "url" : "text",
       source_url: sourceUrl,
-      title: titleFor(text, sourceUrl),
+      title: titleFor(text, sourceUrl, pageTitle),
       dialect: LESSON_DIALECT,
       // Left out for Spanish so it works before migration 0002 adds the column.
       ...(args.language === "es" ? {} : { language: args.language }),

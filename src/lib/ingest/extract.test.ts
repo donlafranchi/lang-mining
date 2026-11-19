@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { splitParagraphs } from "../enrichment/paragraphs";
-import { extractArticleText, looksLikeUrl, validateArticleUrl } from "./extract";
+import { cleanParagraphs, decodeHtml, extractArticle, extractArticleText, looksLikeUrl, validateArticleUrl } from "./extract";
 
 const html = `<!doctype html>
 <html><head><title>La vida en la isla</title>
@@ -168,5 +168,54 @@ describe("validateArticleUrl", () => {
     "http://intranet/x",
   ])("rejects %s", (url) => {
     expect(() => validateArticleUrl(url)).toThrow();
+  });
+});
+
+describe("decodeHtml", () => {
+  it("reads the charset from the header, so old Spanish sites keep their accents", () => {
+    const bytes = new Uint8Array([0x61, 0x64, 0x69, 0xf3, 0x73]); // "adiós" in ISO-8859-1
+    expect(decodeHtml(bytes, "text/html; charset=ISO-8859-1")).toBe("adiós");
+  });
+
+  it("falls back to a charset declared in the page", () => {
+    const head = new TextEncoder().encode('<meta charset="windows-1252"><p>');
+    const bytes = new Uint8Array([...head, 0xf1]); // ñ
+    expect(decodeHtml(bytes, "text/html")).toMatch(/ñ$/);
+  });
+
+  it("defaults to UTF-8 and survives an unknown charset name", () => {
+    const bytes = new TextEncoder().encode("سلام");
+    expect(decodeHtml(bytes, "text/html")).toBe("سلام");
+    expect(decodeHtml(bytes, "text/html; charset=bogus-9")).toBe("سلام");
+  });
+});
+
+describe("cleanParagraphs", () => {
+  it("drops repeated paragraphs and share/related-link boilerplate", () => {
+    const out = cleanParagraphs([
+      "Los domingos la familia se reúne en la playa para comer.",
+      "Leer también: otras historias de la isla",
+      "Compartir",
+      "Síguenos en redes sociales",
+      "Los domingos la familia se reúne en la playa para comer.",
+      "Mi abuela dice que hay que disfrutar el momento.",
+    ]);
+    expect(out).toEqual([
+      "Los domingos la familia se reúne en la playa para comer.",
+      "Mi abuela dice que hay que disfrutar el momento.",
+    ]);
+  });
+
+  it("keeps short headings that are part of the story", () => {
+    expect(cleanParagraphs(["El mercado", "Cada mañana abren los puestos de fruta."])).toEqual([
+      "El mercado",
+      "Cada mañana abren los puestos de fruta.",
+    ]);
+  });
+});
+
+describe("articleTitle", () => {
+  it("returns the page's own title", () => {
+    expect(extractArticle(html, "https://example.com/isla").title).toBe("La vida en la isla");
   });
 });
