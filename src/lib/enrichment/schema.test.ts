@@ -280,3 +280,44 @@ describe("Spanish prompt", () => {
     expect(prompt).toMatch(/ha dado/);
   });
 });
+
+describe("full help lists every word", () => {
+  it("accepts a paragraph with far more than 12 vocab entries and 8 verbs", () => {
+    const word = (i: number) => ({
+      lemma: `palabra${i}`,
+      surface_form: `palabra${i}`,
+      part_of_speech: "noun",
+      english: "word",
+      example_fragment: "una palabra",
+      level: "A1",
+    });
+    const verb = (i: number) => ({
+      infinitive: `hablar${i}`,
+      english: "to talk",
+      form_in_source: "habla",
+      form_english: "talks",
+      tense: "present",
+      mood: "indicative",
+      person: "3rd singular",
+      conjugation_table: { él: "habla" },
+      irregular: false,
+      reflexive: null,
+    });
+    const raw = JSON.stringify({
+      gist: "g",
+      grammar_notes: [],
+      paragraphs: [
+        {
+          n: 1,
+          english: "e",
+          key_phrase: { spanish: "a", english: "b" },
+          verbs: Array.from({ length: 8 }, (_, i) => verb(i)),
+          vocab: Array.from({ length: 40 }, (_, i) => word(i)),
+          idioms: [],
+        },
+      ],
+    });
+    const r = parseBatch(raw, [1]);
+    expect(r.ok).toBe(true);
+  });
+});
