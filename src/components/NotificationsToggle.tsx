@@ -60,6 +60,19 @@ export function NotificationsToggle(props: { publicKey: string | null; initially
     setMessage("Off.");
   }
 
+  async function sendTest() {
+    setBusy(true);
+    setMessage("");
+    try {
+      const res = await fetch("/api/push/test", { method: "POST" });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; seconds?: number };
+      setMessage(res.ok ? `Sent. Lock your phone: it arrives in ${data.seconds ?? 15} seconds.` : (data.error ?? "Something went wrong."));
+    } catch {
+      setMessage("Could not reach the server. Check your connection and try again.");
+    }
+    setBusy(false);
+  }
+
   async function toggle() {
     setBusy(true);
     setMessage("");
@@ -82,6 +95,11 @@ export function NotificationsToggle(props: { publicKey: string | null; initially
           <button type="button" onClick={() => void toggle()} disabled={busy || supported === null}>
             {on ? "Turn off notifications" : "Turn on notifications"}
           </button>
+          {on && (
+            <button type="button" className="btn secondary" onClick={() => void sendTest()} disabled={busy}>
+              Send me a test in 15 seconds
+            </button>
+          )}
         </>
       )}
       {message && <p className="muted" role="status">{message}</p>}

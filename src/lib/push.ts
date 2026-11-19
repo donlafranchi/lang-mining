@@ -68,16 +68,13 @@ export async function hasSubscription(userId: string): Promise<boolean> {
   return (count ?? 0) > 0;
 }
 
-/** Tells the owner of a lesson that it finished. Never throws: a notification problem must not touch the lesson. */
-export async function notifyLesson(sessionId: string, ok: boolean): Promise<void> {
+/** Sends one notification to every phone a person has turned notifications on for. Never throws. */
+export async function notifyUser(userId: string, payload: PushPayload): Promise<void> {
   try {
     const vapid = vapidFromEnv();
     if (!vapid) return;
-    const { data: session } = await db().from("sessions").select("user_id, title").eq("id", sessionId).maybeSingle();
-    if (!session) return;
-    const { data: rows } = await db().from("push_subscriptions").select("endpoint, p256dh, auth").eq("user_id", session.user_id);
+    const { data: rows } = await db().from("push_subscriptions").select("endpoint, p256dh, auth").eq("user_id", userId);
     if (!rows || rows.length === 0) return;
-    const payload = lessonPayload(sessionId, String(session.title ?? ""), ok);
     const gone = await sendToAll(rows as StoredSubscription[], payload, async (s, p) => {
       await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, JSON.stringify(p), {
         vapidDetails: { subject: vapid.subject, publicKey: vapid.publicKey, privateKey: vapid.privateKey },
@@ -85,6 +82,17 @@ export async function notifyLesson(sessionId: string, ok: boolean): Promise<void
       });
     });
     if (gone.length > 0) await db().from("push_subscriptions").delete().in("endpoint", gone);
+  } catch (err) {
+    console.error("notifyUser skipped", err instanceof Error ? err.message : err);
+  }
+}
+
+/** Tells the owner of a lesson that it finished. Never throws: a notification problem must not touch the lesson. */
+export async function notifyLesson(sessionId: string, ok: boolean): Promise<void> {
+  try {
+    const { data: session } = await db().from("sessions").select("user_id, title").eq("id", sessionId).maybeSingle();
+    if (!session) return;
+    await notifyUser(session.user_id, lessonPayload(sessionId, String(session.title ?? ""), ok));
   } catch (err) {
     console.error("notifyLesson skipped", err instanceof Error ? err.message : err);
   }
