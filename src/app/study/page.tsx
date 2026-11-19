@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { deckSummary } from "@/lib/deck";
+import { coreProgress, coreWords } from "@/lib/core";
+import { deckSummary, listDeckKeys } from "@/lib/deck";
 import { patternsFor } from "@/lib/patterns";
 import { listSeenPatterns } from "@/lib/pattern-seen";
 
@@ -15,6 +16,11 @@ export default async function StudyPage() {
     const [es, fa] = await Promise.all([deckSummary(user.id, "es"), deckSummary(user.id, "fa")]);
     deck = { total: es.total + fa.total, due: es.due + fa.due };
   } catch {}
+  let coreIn = 0;
+  try {
+    const [es, fa] = await Promise.all([listDeckKeys(user.id, "es"), listDeckKeys(user.id, "fa")]);
+    coreIn = coreProgress(coreWords("es"), es).inDeck + coreProgress(coreWords("fa"), fa).inDeck;
+  } catch {}
   const seen = await listSeenPatterns(user.id).catch((): string[] => []);
   const toLearn = [...patternsFor("es"), ...patternsFor("fa")].filter((p) => !seen.includes(p.id)).length;
 
@@ -27,6 +33,9 @@ export default async function StudyPage() {
         <h1>Study</h1>
       </div>
       <nav className="stack" aria-label="Study">
+        <Link className="btn secondary" href="/study/core">
+          Core 2,000 ({coreIn} of {coreWords("es").length + coreWords("fa").length} in your deck)
+        </Link>
         <Link className="btn secondary" href="/quiz">
           Quiz{deck ? ` (${deck.due} due)` : ""}
         </Link>

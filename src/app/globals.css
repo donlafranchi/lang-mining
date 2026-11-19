@@ -547,3 +547,11 @@ a.btn {
   opacity: 0.55;
   cursor: progress;
 }
+
+/* Words that are among the 2,000 most common, underlined in the reader. */
+.core-word {
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}

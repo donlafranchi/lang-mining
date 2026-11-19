@@ -106,6 +106,13 @@ export async function listDeck(userId: string, language: Language, limit = 500):
   return (data ?? []).map(toItem);
 }
 
+/** Every saved word key for this person and language, for progress counts. */
+export async function listDeckKeys(userId: string, language: Language): Promise<Set<string>> {
+  const { data, error } = await db().from("deck_items").select("key").eq("user_id", userId).eq("language", language).limit(10000);
+  if (error) fail("Could not load the deck", error.message);
+  return new Set((data ?? []).map((r) => String((r as { key: string }).key)));
+}
+
 /** Cards due now, longest overdue first. */
 export async function listDue(
   userId: string,

@@ -3,6 +3,7 @@
 import { allIdioms, allVerbs, allVocab } from "@/lib/enrichment/flatten";
 import type { Enrichment, Idiom, ReflexiveKind, Verb, Vocab } from "@/lib/enrichment/schema";
 import { lessonPatterns } from "@/lib/patterns";
+import { HighlightedText } from "./HighlightedText";
 import { KnownPatterns, NewPatterns, PatternTags } from "./PatternCard";
 import { Pager } from "./Pager";
 import { SaveAllButton } from "./SaveAllButton";
@@ -19,20 +20,24 @@ export function SpanishLesson({
   tab,
   sessionId,
   seenPatterns,
+  coreRanks,
+  coreForms,
 }: {
   e: Enrichment;
   tab: SpanishTab;
   sessionId: string;
   /** Pattern ids this person has already been shown. */
   seenPatterns: string[];
+  coreRanks: Record<string, number>;
+  coreForms: Record<string, number>;
 }) {
-  if (tab === "read") return <Reader e={e} sessionId={sessionId} seenPatterns={seenPatterns} />;
+  if (tab === "read") return <Reader e={e} sessionId={sessionId} seenPatterns={seenPatterns} coreRanks={coreRanks} coreForms={coreForms} />;
   if (tab === "vocab") {
     const words = allVocab(e);
     return (
       <div className="stack">
         <SaveAllButton words={words} language="es" sessionId={sessionId} />
-        <VocabList items={words} sessionId={sessionId} />
+        <VocabList items={words} sessionId={sessionId} coreRanks={coreRanks} />
       </div>
     );
   }
@@ -40,11 +45,25 @@ export function SpanishLesson({
   return <VerbList items={allVerbs(e)} />;
 }
 
-function Reader({ e, sessionId, seenPatterns }: { e: Enrichment; sessionId: string; seenPatterns: string[] }) {
+function Reader({
+  e,
+  sessionId,
+  seenPatterns,
+  coreRanks,
+  coreForms,
+}: {
+  e: Enrichment;
+  sessionId: string;
+  seenPatterns: string[];
+  coreRanks: Record<string, number>;
+  coreForms: Record<string, number>;
+}) {
   const patterns = lessonPatterns(e.paragraphs);
   const pages = e.paragraphs.map((p, i) => (
     <div key={i} className="stack">
-      <div className="card para-es">{p.spanish}</div>
+      <div className="card para-es">
+        <HighlightedText text={p.spanish} forms={coreForms} />
+      </div>
       <div className="card stack">
         <div className="lead">Key phrase</div>
         <div>{p.key_phrase.spanish}</div>
@@ -61,7 +80,7 @@ function Reader({ e, sessionId, seenPatterns }: { e: Enrichment; sessionId: stri
         <div className="stack">
           <div className="section-label">Vocabulary</div>
           <SaveAllButton words={p.vocab} language="es" sessionId={sessionId} />
-          <VocabList items={p.vocab} sessionId={sessionId} />
+          <VocabList items={p.vocab} sessionId={sessionId} coreRanks={coreRanks} />
         </div>
       )}
       {p.idioms.length > 0 && (
@@ -77,6 +96,7 @@ function Reader({ e, sessionId, seenPatterns }: { e: Enrichment; sessionId: stri
   return (
     <div className="stack">
       <div className="card">{e.summary}</div>
+      <p className="muted">Underlined words are among the 2,000 most common.</p>
       <NewPatterns patterns={patterns} seen={seenPatterns} />
       <Pager pages={pages} label="Paragraph" />
       <KnownPatterns patterns={patterns} seen={seenPatterns} />
@@ -106,7 +126,7 @@ function Tags({ items }: { items: string[] }) {
 }
 
 /** One line per word so a long list is quick to scan, with a save button on each. */
-function VocabList({ items, sessionId }: { items: Vocab[]; sessionId: string }) {
+function VocabList({ items, sessionId, coreRanks }: { items: Vocab[]; sessionId: string; coreRanks: Record<string, number> }) {
   if (items.length === 0) return <Empty what="vocabulary" />;
   return (
     <div className="word-list">
@@ -121,6 +141,7 @@ function VocabList({ items, sessionId }: { items: Vocab[]; sessionId: string }) 
               · {v.english}
             </div>
             <div className="muted">
+              {coreRanks[v.lemma] ? <span className="pill">core #{coreRanks[v.lemma]}</span> : null}{" "}
               {v.part_of_speech} · {v.level}
               {v.example_fragment ? ` · “${v.example_fragment}”` : ""}
             </div>
