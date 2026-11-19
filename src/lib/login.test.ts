@@ -62,6 +62,21 @@ describe("signing in", () => {
     if (result.ok) expect(result.created).toBe(false);
   });
 
+  it("tells the page why it failed, with a code instead of free text", async () => {
+    const { repo } = fakeUserRepo([await withUser("Maria", "maria-secret")]);
+    expect(await attemptLogin(repo, { name: "Maria", passcode: "wrong-secret" }, ctx)).toMatchObject({ code: "wrong" });
+    expect(await attemptLogin(repo, { name: "", passcode: "" }, ctx)).toMatchObject({ code: "missing" });
+  });
+
+  it("says password, not passcode, in what it tells people", async () => {
+    const { repo } = fakeUserRepo([await withUser("Maria", "maria-secret")]);
+    const wrong = await attemptLogin(repo, { name: "Maria", passcode: "wrong-secret" }, ctx);
+    const missing = await attemptLogin(repo, { name: "", passcode: "" }, ctx);
+    for (const r of [wrong, missing]) {
+      if (!r.ok) expect(r.message).not.toMatch(/passcode/i);
+    }
+  });
+
   it("gives the same answer for an unknown name and a wrong passcode", async () => {
     const { repo } = fakeUserRepo([await withUser("Maria", "maria-secret")]);
     const unknown = await attemptLogin(repo, { name: "Nobody", passcode: "maria-secret" }, ctx);
@@ -84,7 +99,7 @@ describe("lockout", () => {
       expect(await attemptLogin(repo, { name: "Maria", passcode: "wrong-secret" }, ctx)).toMatchObject({ ok: false, status: 401 });
     }
     const fifth = await attemptLogin(repo, { name: "Maria", passcode: "wrong-secret" }, ctx);
-    expect(fifth).toMatchObject({ ok: false, status: 429 });
+    expect(fifth).toMatchObject({ ok: false, status: 429, code: "locked", minutes: 15 });
 
     const whileLocked = await attemptLogin(repo, { name: "Maria", passcode: "maria-secret" }, ctx);
     expect(whileLocked).toMatchObject({ ok: false, status: 429 });

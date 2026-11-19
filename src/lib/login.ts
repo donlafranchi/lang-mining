@@ -4,11 +4,14 @@ import { hashPasscode, verifyPasscode } from "./passwords";
 import { nameKey, validateName } from "./user-names";
 import type { UserRecord, UserRepo } from "./users";
 
+/** Why a sign-in failed, in a form a page can turn into its own words. */
+export type LoginFailureCode = "missing" | "bad_name" | "wrong" | "locked" | "setup";
+
 export type LoginResult =
   | { ok: true; user: UserRecord; created: boolean }
-  | { ok: false; status: 400 | 401 | 429 | 503; message: string };
+  | { ok: false; status: 400 | 401 | 429 | 503; code: LoginFailureCode; message: string; minutes?: number };
 
-const WRONG = "Wrong name or passcode.";
+const WRONG = "Wrong name or password.";
 
 // A real hash to check against when the name is unknown, so a wrong name takes as long as a wrong passcode.
 let dummyHash: Promise<string> | null = null;
@@ -27,7 +30,7 @@ export async function attemptLogin(
   ctx: { bootstrapPasscode: string | undefined; now: Date },
 ): Promise<LoginResult> {
   if (input.name.trim() === "" || input.passcode === "") {
-    return { ok: false, status: 400, message: "Type your name and passcode." };
+    return { ok: false, status: 400, code: "missing", message: "Type your name and password." };
   }
 
   if ((await repo.count()) === 0) return bootstrapOwner(repo, input, ctx);
@@ -35,27 +38,31 @@ export async function attemptLogin(
   const user = await repo.findByKey(nameKey(input.name));
   if (!user) {
     await verifyPasscode(input.passcode, await dummy());
-    return { ok: false, status: 401, message: WRONG };
+    return { ok: false, status: 401, code: "wrong", message: WRONG };
   }
 
   if (isLocked(user.locked_until, ctx.now)) {
-    return { ok: false, status: 429, message: lockedMessage(user.locked_until!, ctx.now) };
+    return lockedResult(user.locked_until!, ctx.now);
   }
 
   if (!(await verifyPasscode(input.passcode, user.passcode_hash))) {
     const state = afterFailure(user.failed_attempts, ctx.now);
     await repo.recordFailure(user.id, state);
-    if (state.locked_until) return { ok: false, status: 429, message: lockedMessage(state.locked_until, ctx.now) };
-    return { ok: false, status: 401, message: WRONG };
+    if (state.locked_until) return lockedResult(state.locked_until, ctx.now);
+    return { ok: false, status: 401, code: "wrong", message: WRONG };
   }
 
   if (user.failed_attempts > 0 || user.locked_until) await repo.recordSuccess(user.id);
   return { ok: true, user, created: false };
 }
 
-function lockedMessage(lockedUntil: string, now: Date): string {
-  const n = minutesLeft(lockedUntil, now);
-  return `Too many wrong tries. Try again in ${n} minute${n === 1 ? "" : "s"}.`;
+function lockedResult(lockedUntil: string, now: Date): LoginResult {
+  const minutes = minutesLeft(lockedUntil, now);
+  return { ok: false, status: 429, code: "locked", message: lockedText(minutes), minutes };
+}
+
+export function lockedText(minutes: number): string {
+  return `Too many wrong tries. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`;
 }
 
 async function bootstrapOwner(
@@ -63,11 +70,11 @@ async function bootstrapOwner(
   input: { name: string; passcode: string },
   ctx: { bootstrapPasscode: string | undefined },
 ): Promise<LoginResult> {
-  if (!ctx.bootstrapPasscode) return { ok: false, status: 503, message: "APP_PASSCODE is not set." };
-  if (!safeEqual(input.passcode, ctx.bootstrapPasscode)) return { ok: false, status: 401, message: "Wrong passcode." };
+  if (!ctx.bootstrapPasscode) return { ok: false, status: 503, code: "setup", message: "APP_PASSCODE is not set." };
+  if (!safeEqual(input.passcode, ctx.bootstrapPasscode)) return { ok: false, status: 401, code: "wrong", message: "Wrong password." };
 
   const nameProblem = validateName(input.name);
-  if (nameProblem) return { ok: false, status: 400, message: nameProblem };
+  if (nameProblem) return { ok: false, status: 400, code: "bad_name", message: nameProblem };
 
   const user = await repo.create({
     name: input.name.trim(),

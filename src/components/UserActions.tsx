@@ -28,12 +28,12 @@ export function UserActions(props: { id: string; name: string }) {
   }
 
   function reset() {
-    const passcode = window.prompt(`New passcode for ${props.name} (at least 6 characters). This signs them out everywhere.`);
+    const passcode = window.prompt(`New password for ${props.name} (at least 6 characters). This signs them out everywhere.`);
     if (!passcode) return;
     void call(
       `/api/admin/users/${props.id}/passcode`,
       { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ passcode }) },
-      "Passcode changed.",
+      "Password changed.",
     );
   }
 
@@ -45,7 +45,7 @@ export function UserActions(props: { id: string; name: string }) {
   return (
     <span className="user-actions">
       <button className="link-button" onClick={reset} disabled={busy}>
-        New passcode
+        New password
       </button>
       <button className="link-button danger" onClick={remove} disabled={busy}>
         Remove

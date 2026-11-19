@@ -45,7 +45,7 @@ export async function removeUser(repo: UserRepo, actor: Actor, targetId: string)
   return { ok: true, data: undefined };
 }
 
-/** Give someone a new passcode. This also signs them out everywhere. */
+/** Give someone a new password. This also signs them out everywhere. */
 export async function resetPasscode(
   repo: UserRepo,
   actor: Actor,

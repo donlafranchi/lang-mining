@@ -32,7 +32,7 @@ export default async function AdminPage() {
 
       <div className="stack">
         <p className="muted">
-          Each person has their own lessons and deck. Give them the name and passcode you pick here, and they sign in with
+          Each person has their own lessons and deck. Give them the name and password you pick here, and they sign in with
           those.
         </p>
 

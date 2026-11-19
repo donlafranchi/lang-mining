@@ -36,7 +36,7 @@ On Vercel, set the same variables from `.env.example` as project environment var
 
 ## Accounts
 
-Each person signs in with a name and their own passcode, and has their own lessons and deck. The first sign-in ever, using `APP_PASSCODE` and the name you type, creates the owner. The owner adds, resets and removes people on the Admin page. Five wrong passcodes lock that account for 15 minutes. `SESSION_SECRET` signs the session cookie.
+Each person signs in with a name and their own password (no email), and has their own lessons and deck. The sign-in form is a plain HTML form so the iPhone password manager can save and fill it. The first sign-in ever, using `APP_PASSCODE` as the password and the name you type, creates the owner. The owner adds, resets and removes people on the Admin page. Five wrong passwords lock that account for 15 minutes. `SESSION_SECRET` signs the session cookie.
 
 ## Install on your phone
 

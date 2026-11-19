@@ -41,10 +41,10 @@ export async function verifyPasscode(passcode: string, stored: string): Promise<
   }
 }
 
-/** A message if the passcode is not acceptable, otherwise null. */
+/** A message if the password is not acceptable, otherwise null. */
 export function validatePasscode(passcode: string): string | null {
-  if (passcode.trim() === "") return "Pick a passcode.";
-  if (passcode.length < MIN_PASSCODE_LENGTH) return `The passcode needs at least ${MIN_PASSCODE_LENGTH} characters.`;
-  if (passcode.length > MAX_PASSCODE_LENGTH) return "That passcode is too long.";
+  if (passcode.trim() === "") return "Pick a password.";
+  if (passcode.length < MIN_PASSCODE_LENGTH) return `The password needs at least ${MIN_PASSCODE_LENGTH} characters.`;
+  if (passcode.length > MAX_PASSCODE_LENGTH) return "That password is too long.";
   return null;
 }

@@ -49,7 +49,7 @@ Share a link, text, or clip from an iPhone. Get a mobile-first Spanish study ses
 - quiz[]: question, answer, type (vocab, idiom, verb, listening)
 
 ## Screens
-- Login (name and passcode), Admin (owner only: add, reset passcode, remove people)
+- Login (name and password), Admin (owner only: add, reset password, remove people)
 - Home: paste or upload box, recent sessions
 - Session tabs: Read (paragraph reader, swipe right for the next paragraph), Vocab, Idioms, Verbs (the last three list items from all paragraphs), Quiz
 - Tap a word: bottom sheet with lemma, meaning, conjugation, reflexive note

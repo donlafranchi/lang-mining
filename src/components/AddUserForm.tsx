@@ -26,7 +26,7 @@ export function AddUserForm() {
       if (!res.ok) {
         setError(data.error ?? "Something went wrong.");
       } else {
-        setDone(`Added ${name.trim()}. Tell them the name and passcode.`);
+        setDone(`Added ${name.trim()}. Tell them the name and password.`);
         setName("");
         setPasscode("");
         router.refresh();
@@ -42,11 +42,30 @@ export function AddUserForm() {
       <div className="lead">Add a person</div>
       <label className="field">
         Name
-        <input type="text" value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" />
+        <input
+          type="text"
+          name="new-person"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          autoComplete="off"
+          autoCapitalize="words"
+          autoCorrect="off"
+          spellCheck={false}
+        />
       </label>
       <label className="field">
-        Passcode (at least 6 characters)
-        <input type="text" value={passcode} onChange={(e) => setPasscode(e.target.value)} autoComplete="off" autoCapitalize="none" />
+        Password (at least 6 characters)
+        {/* Plain text, not a password field, so your iPhone does not offer to save this person's password as yours. */}
+        <input
+          type="text"
+          name="new-person-secret"
+          value={passcode}
+          onChange={(e) => setPasscode(e.target.value)}
+          autoComplete="off"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+        />
       </label>
       {error && <p className="error">{error}</p>}
       {done && <p className="muted">{done}</p>}
