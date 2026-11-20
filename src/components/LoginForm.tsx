@@ -1,5 +1,7 @@
 // A plain HTML form on purpose, with no script. Safari on iPhone offers to save and fill the name and password only for a
 // real form submission that lands on a new page, and the standard field names and autocomplete hints help it recognise them.
+import Link from "next/link";
+
 export function LoginForm(props: { firstRun: boolean; error: string | null }) {
   return (
     <form className="stack" method="post" action="/api/login">
@@ -36,6 +38,11 @@ export function LoginForm(props: { firstRun: boolean; error: string | null }) {
       <button className="btn" type="submit">
         Sign in
       </button>
+      {!props.firstRun && (
+        <Link href="/signup" className="muted">
+          New here? Create an account
+        </Link>
+      )}
     </form>
   );
 }
