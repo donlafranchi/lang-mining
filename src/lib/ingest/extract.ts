@@ -146,7 +146,7 @@ export function keepArticlePieces(pieces: Piece[]): Piece[] {
 }
 
 // Parts of a page that are never the story: navigation, footers, forms, players, dates.
-const PRUNE_TAGS = new Set(["NAV", "ASIDE", "FOOTER", "FORM", "BUTTON", "INPUT", "SELECT", "TEXTAREA", "IFRAME", "VIDEO", "AUDIO", "SVG", "DIALOG", "TIME"]);
+const PRUNE_TAGS = new Set(["NAV", "ASIDE", "FOOTER", "FORM", "BUTTON", "INPUT", "SELECT", "TEXTAREA", "IFRAME", "VIDEO", "AUDIO", "SVG", "DIALOG", "TIME", "FIGCAPTION"]);
 const PRUNE_ROLES = new Set(["navigation", "banner", "complementary", "contentinfo", "search", "dialog", "toolbar", "menu"]);
 // Words in a class or id that say what a box is for ("share-bar", "related_posts").
 const PRUNE_WORDS = new Set([
@@ -229,6 +229,7 @@ const FURNITURE: RegExp[] = [
   /^(?:publicado|actualizado|updated|published|modificado|fecha)(?:\s+el)?\s*:?\s*[\d\p{L}.,:/ -]{4,40}$/iu,
   /^(?:escucha esta nota|escuchar|listen to this(?: article)?|advertisement|advertising|publicidad|anuncio)$/i,
   /^(?:descubre|ver|leer|conoce|mira|lee|see|read|discover)\s+(?:m[aá]s|todo|more|all|la galer[ií]a|el v[ií]deo|la nota completa)\.?$/i,
+  /^(?:fuente(?: de la (?:imagen|foto|fotograf[ií]a))?|pie de foto|cr[eé]ditos?(?: de la (?:imagen|foto))?|image source|photo credit)\b[^.!?]{0,50}$/i,
   /^(?:t[ií]tulo|descripci[oó]n|duraci[oó]n|cr[eé]ditos?)\s+del?\s+(?:v[ií]deo|audio|galer[ií]a|art[ií]culo|nota)\s*:?.{0,40}$/i,
 ];
 

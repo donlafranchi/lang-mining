@@ -21,6 +21,15 @@ describe("paragraphRows", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ kind: "verb", senses: ["to arrive", "to reach"] });
   });
+  it("leaves proper nouns out of the list, however the model labels them", () => {
+    const names = [
+      { ...vocab("Reuters", "Reuters"), part_of_speech: "proper noun" },
+      { ...vocab("Ana", "Ana"), part_of_speech: "propn" },
+      { ...vocab("Madrid", "Madrid"), part_of_speech: "Proper Noun" },
+      { ...vocab("casa", "casa") },
+    ];
+    expect(paragraphRows(text, names, []).map((r) => (r.kind === "word" ? r.vocab.lemma : ""))).toEqual(["casa"]);
+  });
   it("puts entries it cannot place in the text last, in their original order", () => {
     const rows = paragraphRows(text, [vocab("zorro", "zorro"), vocab("casa", "casa")], []);
     expect(rows.map((r) => (r.kind === "word" ? r.vocab.lemma : ""))).toEqual(["casa", "zorro"]);

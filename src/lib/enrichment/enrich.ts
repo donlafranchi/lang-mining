@@ -148,6 +148,8 @@ function mergeVerbs(code: Verb[], model: Verb[]): Verb[] {
 
 async function enrichInBatches<R, L>(args: {
   text: string;
+  /** The article's own title, made the first paragraph so its words are explained too. */
+  title?: string;
   language: Language;
   help: HelpLevel;
   complete: CompleteFn;
@@ -168,6 +170,9 @@ async function enrichInBatches<R, L>(args: {
 }): Promise<L> {
   const paragraphs = splitParagraphs(args.text);
   if (paragraphs.length === 0) throw new EnrichmentError("Input text is empty.");
+  // The title stands alone as paragraph 1, never merged into the text after it.
+  const title = args.title?.replace(/\s+/g, " ").trim();
+  if (title && title !== paragraphs[0]) paragraphs.unshift(title);
 
   // Language analysis, when the service is set up. If it is down the lesson is built without it.
   let analyses: ParagraphAnalysis[] | null = null;
@@ -245,6 +250,8 @@ async function enrichInBatches<R, L>(args: {
 
 export async function enrichText(args: {
   text: string;
+  /** The article's own title (links only). It becomes the first paragraph. */
+  title?: string;
   language?: Language;
   /** How many words the lesson glosses. Defaults to light for Spanish and full for Farsi. */
   help?: HelpLevel;
@@ -265,6 +272,7 @@ export async function enrichText(args: {
   if (language === "fa") {
     return enrichInBatches({
       text,
+      title: args.title,
       language,
       help,
       complete: args.complete,
@@ -287,6 +295,7 @@ export async function enrichText(args: {
   }
   return enrichInBatches({
     text,
+    title: args.title,
     language,
     help,
     complete: args.complete,

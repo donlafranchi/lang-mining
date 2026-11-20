@@ -31,10 +31,10 @@ export async function POST(request: Request) {
   const model = resolveModel(body.model);
 
   try {
-    const { id, text, autoTitle, libraryKey, reused } = await createSession({ input: body.input, language, userId: user.id, help });
+    const { id, text, autoTitle, libraryKey, reused, lessonTitle } = await createSession({ input: body.input, language, userId: user.id, help });
     // A copy of an article someone already did is ready at once, so there is nothing to build.
     if (reused) return NextResponse.json({ id, status: "ready", reused: true });
-    after(() => buildSession({ id, text, language, help, model, autoTitle, libraryKey }));
+    after(() => buildSession({ id, text, language, help, model, autoTitle, libraryKey, lessonTitle }));
     return NextResponse.json({ id, status: "processing" });
   } catch (err) {
     if (err instanceof UserFacingError) {

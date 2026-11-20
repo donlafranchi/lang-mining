@@ -565,3 +565,16 @@ describe("enrichText builds verb tables in code when the analysis service can co
     expect(complete.mock.calls[0][0].messages[0].content).not.toMatch(/Verb forms the app already explains/);
   });
 });
+
+
+describe("enrichText with the article's title", () => {
+  it("makes the title its own first paragraph, so its words get explained too", async () => {
+    const complete = vi.fn(fakeModel());
+    const lesson = (await enrichText({ text: article(2), title: "La plaza nueva abre", complete })) as Enrichment;
+    expect(lesson.paragraphs.map((p) => p.spanish)).toEqual(["La plaza nueva abre", para(1), para(2)]);
+  });
+  it("is unchanged without a title", async () => {
+    const lesson = (await enrichText({ text: article(2), complete: vi.fn(fakeModel()) })) as Enrichment;
+    expect(lesson.paragraphs).toHaveLength(2);
+  });
+});

@@ -18,3 +18,18 @@ describe("cleanTitle", () => {
     expect(cleanTitle("x".repeat(MAX_TITLE_CHARS)).ok).toBe(true);
   });
 });
+
+import { pageTitleToLesson } from "./titles";
+
+describe("pageTitleToLesson", () => {
+  it("drops the site name tacked on the end, and keeps long real titles whole", () => {
+    expect(pageTitleToLesson("La plaza nueva abre en marzo | Diario del Sur")).toBe("La plaza nueva abre en marzo");
+    expect(pageTitleToLesson("La plaza nueva abre en marzo - Diario del Sur")).toBe("La plaza nueva abre en marzo");
+    expect(pageTitleToLesson("Cómo vivir bien: una guía para el barrio – El País")).toBe("Cómo vivir bien: una guía para el barrio");
+    const long = "x".repeat(110);
+    expect(pageTitleToLesson(long)).toBe(long);
+  });
+  it("keeps a short title that merely has a dash in it", () => {
+    expect(pageTitleToLesson("Sí - no")).toBe("Sí - no");
+  });
+});

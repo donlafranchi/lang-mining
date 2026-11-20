@@ -109,9 +109,10 @@ describe("extractArticleText keeps the paragraphs", () => {
     expect(paragraphsOf(text)).toEqual([P1, P2, P3]);
   });
 
-  it("keeps a figure caption as its own paragraph", () => {
+  it("drops a figure caption: captions and photo credits are not the story", () => {
     const text = extractArticleText(page(`<p>${P1}</p><figure><img src="a.jpg"/><figcaption>${P2}</figcaption></figure><p>${P3}</p>`), "https://example.com/a");
-    expect(paragraphsOf(text)).toContain(P2);
+    expect(paragraphsOf(text)).not.toContain(P2);
+    expect(paragraphsOf(text)).toEqual([P1, P3]);
   });
 
   it("collapses source whitespace and line breaks inside a paragraph, and decodes entities", () => {
@@ -235,6 +236,10 @@ describe("cleanParagraphs", () => {
       "Título del video",
       "Fecha de publicación 4 horas",
       "Duración del video: 2:31",
+      "Fuente de la imagen",
+      "Fuente: Reuters",
+      "Pie de foto",
+      "Créditos de la imagen: Getty",
     ];
     const story = "Mi abuela dice que hay que disfrutar el momento.";
     expect(cleanParagraphs([...junk, story])).toEqual([story]);
@@ -247,6 +252,7 @@ describe("cleanParagraphs", () => {
       "Leyó durante tres minutos antes de dormir cada noche.",
       "Publicado hace años, el libro sigue vendiéndose en todas las librerías del país.",
       "Fue un minuto de silencio por las víctimas del accidente.",
+      "Fuentes cercanas al gobierno dijeron que las obras empezarán pronto.",
     ];
     expect(cleanParagraphs(keep)).toEqual(keep);
   });

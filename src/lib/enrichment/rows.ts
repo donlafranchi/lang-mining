@@ -8,7 +8,11 @@ export type WordRow = { kind: "word"; vocab: Vocab } | { kind: "verb"; verb: Ver
  * Words and verbs for one paragraph as a single list, in the order they appear in the text. A verb that is also
  * listed as a word shows once, as a verb, and keeps the word's other meanings.
  */
-export function paragraphRows(text: string, vocab: Vocab[], verbs: Verb[]): WordRow[] {
+const PROPER = /proper|propn|nombre propio/i;
+
+export function paragraphRows(text: string, vocabAll: Vocab[], verbs: Verb[]): WordRow[] {
+  // Names of people, places and organizations are not vocabulary.
+  const vocab = vocabAll.filter((v) => !PROPER.test(v.part_of_speech));
   const verbLemmas = new Set(verbs.map((v) => lexiconKey(v.infinitive)));
   const sensesByLemma = new Map(vocab.filter((v) => v.senses && v.senses.length > 1).map((v) => [lexiconKey(v.lemma), v.senses!]));
   const entries: { row: WordRow; form: string }[] = [
