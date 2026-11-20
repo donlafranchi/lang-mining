@@ -213,7 +213,7 @@ textarea {
   grid-template-columns: repeat(4, 1fr);
   gap: 6px;
   position: sticky;
-  top: 0;
+  top: var(--header-h);
   background: var(--bg);
   padding: 8px 0;
   z-index: 1;
@@ -773,4 +773,80 @@ progress {
 .theme-tabs {
   grid-template-columns: repeat(3, 1fr);
   position: static;
+}
+
+/* The bar on every page: avatar menu on the left, the app's name beside it. */
+:root {
+  --header-h: 56px;
+}
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+.app-header-inner {
+  max-width: 640px;
+  min-height: var(--header-h);
+  margin: 0 auto;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.app-title {
+  font-size: 0.95rem;
+  line-height: 1.25;
+  text-decoration: none;
+}
+.avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 240px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  padding: 6px;
+  display: grid;
+  z-index: 20;
+}
+.menu-who {
+  padding: 8px 12px;
+  font-size: 0.85rem;
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.menu-item:hover,
+.menu-item:focus-visible {
+  background: var(--chip);
 }

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { AppHeader } from "@/components/AppHeader";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { startupImages } from "@/lib/splash";
 import { themeScript } from "@/lib/theme";
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: themeScript() }} />
       </head>
       <body>
+        <AppHeader />
         {children}
         <ServiceWorkerRegister />
       </body>
