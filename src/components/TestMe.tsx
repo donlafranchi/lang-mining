@@ -4,10 +4,18 @@ import { useState } from "react";
 import { isCorrect, type Question } from "@/lib/test-me";
 
 /** A short typed quiz at the end of a paragraph: type the English, or tap Show answer. Nothing is saved. */
-export function TestMe({ questions }: { questions: Question[] }) {
+export function TestMe({
+  questions,
+  lang = "es",
+}: {
+  questions: Question[];
+  lang?: "es" | "fa";
+}) {
   const [index, setIndex] = useState(0);
   const [typed, setTyped] = useState("");
-  const [state, setState] = useState<"asking" | "right" | "wrong" | "shown">("asking");
+  const [state, setState] = useState<"asking" | "right" | "wrong" | "shown">(
+    "asking",
+  );
   const [score, setScore] = useState(0);
 
   if (questions.length === 0) return null;
@@ -54,8 +62,11 @@ export function TestMe({ questions }: { questions: Question[] }) {
             <div className="muted">
               {index + 1} / {questions.length} · type the English
             </div>
-            <div className="testme-prompt" lang="es">
-              {q.prompt}
+            <div className="testme-prompt">
+              <span lang={lang} dir={lang === "fa" ? "rtl" : "ltr"}>
+                {q.prompt}
+              </span>
+              {q.translit && <span className="muted"> {q.translit}</span>}
               <span className="muted"> · {q.pos}</span>
             </div>
             {state === "asking" || state === "wrong" ? (
@@ -80,12 +91,24 @@ export function TestMe({ questions }: { questions: Question[] }) {
                   autoComplete="off"
                   aria-label="English meaning"
                 />
-                {state === "wrong" && <p className="error">Not quite. Try again, or show the answer.</p>}
+                {state === "wrong" && (
+                  <p className="error">
+                    Not quite. Try again, or show the answer.
+                  </p>
+                )}
                 <div className="deck-links">
-                  <button className="btn" type="submit" disabled={!typed.trim()}>
+                  <button
+                    className="btn"
+                    type="submit"
+                    disabled={!typed.trim()}
+                  >
                     Check
                   </button>
-                  <button className="btn secondary" type="button" onClick={() => setState("shown")}>
+                  <button
+                    className="btn secondary"
+                    type="button"
+                    onClick={() => setState("shown")}
+                  >
                     Show answer
                   </button>
                 </div>
@@ -93,9 +116,17 @@ export function TestMe({ questions }: { questions: Question[] }) {
             ) : (
               <div className="stack">
                 <div className="testme-answer">
-                  {state === "right" && <span className="testme-right">Right!</span>}
+                  {state === "right" && (
+                    <span className="testme-right">Right!</span>
+                  )}
                   <span className="testme-meaning">{q.answers.join(", ")}</span>
-                  <span className="muted">{q.lemma}</span>
+                  <span
+                    className="muted"
+                    lang={lang}
+                    dir={lang === "fa" ? "rtl" : "ltr"}
+                  >
+                    {q.lemma}
+                  </span>
                 </div>
                 <button className="btn" onClick={next}>
                   {index + 1 < questions.length ? "Next" : "Finish"}
