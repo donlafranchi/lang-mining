@@ -231,6 +231,10 @@ describe("cleanParagraphs", () => {
       "Updated Nov 19, 2026",
       "Escucha esta nota",
       "Advertisement",
+      "Descubre más",
+      "Título del video",
+      "Fecha de publicación 4 horas",
+      "Duración del video: 2:31",
     ];
     const story = "Mi abuela dice que hay que disfrutar el momento.";
     expect(cleanParagraphs([...junk, story])).toEqual([story]);
@@ -258,5 +262,57 @@ describe("cleanParagraphs", () => {
 describe("articleTitle", () => {
   it("returns the page's own title", () => {
     expect(extractArticle(html, "https://example.com/isla").title).toBe("La vida en la isla");
+  });
+});
+
+describe("page furniture is removed by structure, not by guessing at wording", () => {
+  const story1 = "Los vecinos del barrio se reunieron ayer por la tarde para hablar de la nueva plaza.";
+  const story2 = "La alcaldesa dijo que las obras empezarán en marzo y terminarán antes del verano.";
+  const page = (body: string) => `<html><head><title>La plaza nueva</title></head><body>${body}</body></html>`;
+
+  it("drops video titles, dates, share rows, captions and 'discover more' links that sit between real paragraphs", () => {
+    const html = page(`
+      <header><nav><a href="/">Inicio</a><a href="/mundo">Mundo</a></nav></header>
+      <article>
+        <h1>La plaza nueva</h1>
+        <div class="byline">Redacción Central</div>
+        <time datetime="2026-11-19">19 de noviembre</time>
+        <p>${story1}</p>
+        <div class="video-title">Título del video</div>
+        <div>Fecha de publicación 4 horas</div>
+        <p>${story2}</p>
+        <div class="share"><button>Compartir</button><a href="#">Twitter</a></div>
+        <p><a href="/mas">Descubre más</a></p>
+        <div><a href="/a">Otra nota que te puede gustar</a></div>
+      </article>
+      <footer>Todos los derechos reservados</footer>`);
+    const text = extractArticle(html, "https://example.com/plaza").text;
+    expect(text.split("\n\n")).toEqual([story1, story2]);
+  });
+
+  it("drops short labels and links that sit in plain boxes even without telltale class names", () => {
+    const html = page(`<article>
+        <p>${story1}</p>
+        <div>Título del video</div>
+        <span>Fecha de publicación hace 4 horas</span>
+        <p>${story2}</p>
+        <div><a href="/x">Descubre más</a></div>
+        <ul><li><a href="/1">Primera nota relacionada</a></li><li><a href="/2">Segunda nota relacionada</a></li></ul>
+      </article>`);
+    expect(extractArticle(html, "https://example.com/plaza").text.split("\n\n")).toEqual([story1, story2]);
+  });
+
+  it("keeps links and spans that sit inside a real sentence", () => {
+    const html = page(`<article><p>Los vecinos hablaron con <a href="/alcaldesa">la alcaldesa</a> sobre <span>la plaza</span> y otras cosas del barrio.</p><p>${story2}</p></article>`);
+    expect(extractArticle(html, "https://example.com/i").text.split("\n\n")[0]).toBe("Los vecinos hablaron con la alcaldesa sobre la plaza y otras cosas del barrio.");
+  });
+
+  it("keeps headings, short real paragraphs and a lesson written as plain text in a box", () => {
+    const withHeading = page(`<article><h2>El mercado</h2><p>${story1}</p><p>No lo sé.</p><p>${story2}</p></article>`);
+    expect(extractArticle(withHeading, "https://example.com/m").text.split("\n\n")).toEqual(["El mercado", story1, "No lo sé.", story2]);
+
+    const plain = page(`<div id="story">Primera línea de la historia, que es larga.\n\nNo lo sé.\n\nOtra línea larga para que la página tenga texto suficiente que leer.</div>`);
+    const out = extractArticle(plain, "https://example.com/p").text;
+    expect(out).toContain("No lo sé.");
   });
 });
