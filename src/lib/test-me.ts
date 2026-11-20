@@ -40,7 +40,7 @@ function stem(word: string): string {
     .split(" ")
     .map((w) =>
       w.length > 4
-        ? w.replace(/(ing|ed|es|s)$/, "").replace(/(.)\1$/, "$1")
+        ? w.replace(/(ing|ed|es|s)$/, "").replace(/e$/, "").replace(/(.)\1$/, "$1")
         : w,
     )
     .join(" ");
