@@ -62,6 +62,14 @@ describe("lessons are limited to their owner", () => {
     expect(fake.calls).toHaveLength(1);
   });
 
+  it("listing lessons for one language shows only that language, still limited to the user", async () => {
+    fake = createFakeDb({ "sessions.select": { data: [sessionRow, { ...sessionRow, id: "5", language: "fa" }, { ...sessionRow, id: "6", language: "es" }] } });
+    const { listSessions } = await import("./sessions");
+    const fa = await listSessions(ME, 20, "fa");
+    expect(fa.map((r) => r.language)).toEqual(["fa"]);
+    expect(fake.calls.every((c) => scopedTo(c, ME))).toBe(true);
+  });
+
   it("opening a lesson filters by id and user, and reads nothing else for someone else's lesson", async () => {
     fake = createFakeDb({ "sessions.select": { data: null } });
     const { getSession } = await import("./sessions");
