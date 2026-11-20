@@ -54,8 +54,9 @@ export function TestMe({ questions }: { questions: Question[] }) {
             <div className="muted">
               {index + 1} / {questions.length} · type the English
             </div>
-            <div className="quiz-word" lang="es">
+            <div className="testme-prompt" lang="es">
               {q.prompt}
+              <span className="muted"> · {q.pos}</span>
             </div>
             {state === "asking" || state === "wrong" ? (
               <form
@@ -66,12 +67,14 @@ export function TestMe({ questions }: { questions: Question[] }) {
                 }}
               >
                 <input
+                  className="testme-input"
+                  type="text"
                   value={typed}
                   onChange={(e) => {
                     setTyped(e.target.value);
                     if (state === "wrong") setState("asking");
                   }}
-                  placeholder="English meaning"
+                  placeholder="type the English"
                   autoCapitalize="none"
                   autoCorrect="off"
                   autoComplete="off"
@@ -89,10 +92,11 @@ export function TestMe({ questions }: { questions: Question[] }) {
               </form>
             ) : (
               <div className="stack">
-                <p className={state === "right" ? "lead" : undefined}>
-                  {state === "right" ? "Right! " : ""}
-                  <strong>{q.lemma}</strong> · {q.answers.join(", ")}
-                </p>
+                <div className="testme-answer">
+                  {state === "right" && <span className="testme-right">Right!</span>}
+                  <span className="testme-meaning">{q.answers.join(", ")}</span>
+                  <span className="muted">{q.lemma}</span>
+                </div>
                 <button className="btn" onClick={next}>
                   {index + 1 < questions.length ? "Next" : "Finish"}
                 </button>
