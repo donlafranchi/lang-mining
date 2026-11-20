@@ -29,6 +29,11 @@ describe("pageTitleToLesson", () => {
     const long = "x".repeat(110);
     expect(pageTitleToLesson(long)).toBe(long);
   });
+  it("keeps a long headline whole, quotes and all", () => {
+    const real = 'Anthropic: por qué el mayor debut bursátil de la historia pone a prueba "la burbuja" de la IA y la posibilidad de que estalle';
+    expect(pageTitleToLesson(real)).toBe(real);
+    expect(cleanTitle(real)).toEqual({ ok: true, title: real });
+  });
   it("keeps a short title that merely has a dash in it", () => {
     expect(pageTitleToLesson("Sí - no")).toBe("Sí - no");
   });
