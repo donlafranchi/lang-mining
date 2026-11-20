@@ -71,6 +71,9 @@ export function AppHeader() {
   return (
     <header className="app-header">
       <div className="app-header-inner" ref={box}>
+        <Link href="/" className="app-title">
+          <strong>Hand to Brain:</strong> A Language Learning App
+        </Link>
         {person && (
           <div className="avatar-wrap">
             <button type="button" className="avatar" aria-label="Account menu" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
@@ -95,9 +98,6 @@ export function AppHeader() {
             )}
           </div>
         )}
-        <Link href="/" className="app-title">
-          <strong>Hand to Brain:</strong> A Language Learning App
-        </Link>
       </div>
     </header>
   );

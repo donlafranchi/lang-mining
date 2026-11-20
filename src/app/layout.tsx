@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { AppHeader } from "@/components/AppHeader";
+import { AppSplash } from "@/components/AppSplash";
+import { UpdateBanner } from "@/components/UpdateBanner";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { startupImages } from "@/lib/splash";
 import { themeScript } from "@/lib/theme";
@@ -28,7 +30,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: themeScript() }} />
       </head>
       <body>
+        <AppSplash />
         <AppHeader />
+        <UpdateBanner />
         {children}
         <ServiceWorkerRegister />
       </body>
