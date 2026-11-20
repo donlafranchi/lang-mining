@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SettingsForm } from "@/components/SettingsForm";
 import { NotificationsToggle } from "@/components/NotificationsToggle";
+import { PeopleAdmin } from "@/components/PeopleAdmin";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { UnderlineToggle } from "@/components/UnderlineToggle";
 import { requireUser } from "@/lib/auth";
@@ -25,6 +26,7 @@ export default async function SettingsPage() {
       <ThemeToggle />
       <UnderlineToggle initiallyOn={await underlineOn()} />
       <NotificationsToggle publicKey={vapid?.publicKey ?? null} initiallyOn={vapid ? await hasSubscription(user.id) : false} />
+      {user.isAdmin && <PeopleAdmin me={user} />}
     </main>
   );
 }

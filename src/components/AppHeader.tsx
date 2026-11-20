@@ -85,11 +85,6 @@ export function AppHeader() {
                 <Link className="menu-item" href="/settings" role="menuitem" onClick={() => setOpen(false)}>
                   Settings
                 </Link>
-                {person.isAdmin && (
-                  <Link className="menu-item" href="/admin" role="menuitem" onClick={() => setOpen(false)}>
-                    Admin
-                  </Link>
-                )}
                 <ThemeMenuItem />
                 <button type="button" className="menu-item" onClick={() => void signOut()} disabled={signingOut}>
                   {signingOut ? "Signing out…" : "Sign out"}
