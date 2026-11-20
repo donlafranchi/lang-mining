@@ -12,11 +12,15 @@ import type {
   FarsiVerb,
   FarsiWord,
 } from "@/lib/enrichment/farsi-schema";
-import { farsiParagraphRows, type FarsiRow } from "@/lib/enrichment/farsi-rows";
+import {
+  farsiGlosses,
+  farsiParagraphRows,
+  type FarsiRow,
+} from "@/lib/enrichment/farsi-rows";
 import { lessonPatterns, patternById } from "@/lib/patterns";
 import { pickFarsiQuestions } from "@/lib/test-me";
 import { posLabel } from "@/lib/pos-labels";
-import { HighlightedText } from "./HighlightedText";
+import { TappableParagraph } from "./TappableParagraph";
 import { KnownPatterns } from "./PatternCard";
 import { PatternRows } from "./PatternSheet";
 import { TestMe } from "./TestMe";
@@ -105,14 +109,18 @@ function Reader({
         <div className="card stack">
           <div className="para-fa">
             <Fa>
-              <HighlightedText
+              <TappableParagraph
                 text={p.persian}
                 forms={coreForms}
                 marks={fresh}
+                language="fa"
+                glosses={farsiGlosses(rows)}
+                sessionId={sessionId}
               />
             </Fa>
           </div>
           <div className="translit">{p.transliteration}</div>
+          <div className="muted small-hint">Tap any word for its meaning.</div>
         </div>
 
         {p.idioms.length > 0 && (
