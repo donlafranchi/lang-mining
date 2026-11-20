@@ -35,6 +35,8 @@ export function SessionView(props: {
   defaultHelp: HelpLevel;
   /** Grammar pattern ids this person has already been shown. */
   seenPatterns: string[];
+  /** The owner can remove paragraphs that are not part of the article. */
+  canEdit?: boolean;
   /** Lemma to rank, for the words in this lesson that are on the core 2,000 list. */
   coreRanks: Record<string, number>;
   /** Written form to rank, for the words in the text to underline as core words. */
@@ -140,7 +142,7 @@ export function SessionView(props: {
           {props.session.language === "fa" ? (
             <FarsiLesson e={enrichment as FarsiEnrichment} tab={tab} sessionId={props.session.id} seenPatterns={props.seenPatterns} coreRanks={props.coreRanks} coreForms={props.coreForms} />
           ) : (
-            <SpanishLesson e={enrichment as Enrichment} tab={tab} sessionId={props.session.id} seenPatterns={props.seenPatterns} coreRanks={props.coreRanks} coreForms={props.coreForms} />
+            <SpanishLesson e={enrichment as Enrichment} tab={tab} canEdit={props.canEdit} sessionId={props.session.id} seenPatterns={props.seenPatterns} coreRanks={props.coreRanks} coreForms={props.coreForms} />
           )}
         </>
       )}

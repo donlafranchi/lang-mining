@@ -71,6 +71,7 @@ export default async function SessionPage(props: PageProps<"/sessions/[id]">) {
         sourceAvailable={detail.sourceAvailable}
         defaultHelp={user.help[detail.session.language]}
         seenPatterns={seenPatterns}
+        canEdit={user.isAdmin}
         coreRanks={coreRanks}
         coreForms={coreForms}
       />
