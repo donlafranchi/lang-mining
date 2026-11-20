@@ -15,11 +15,11 @@ describe("signUp", () => {
     expect([...users.values()].find((u) => u.name === "Maria")!.is_admin).toBe(false);
   });
 
-  it("is closed when no invite code is set", async () => {
+  it("is open with no code needed when no invite code is set", async () => {
     const { repo, users } = fakeUserRepo([OWNER]);
-    const r = await signUp(repo, good, { signupCode: undefined });
-    expect(r).toMatchObject({ ok: false, code: "closed" });
-    expect(users).toHaveLength(1);
+    const r = await signUp(repo, { ...good, code: "" }, { signupCode: undefined });
+    expect(r.ok).toBe(true);
+    expect(users.size).toBe(2);
   });
 
   it("refuses a wrong code and creates nothing", async () => {
