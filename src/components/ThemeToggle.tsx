@@ -57,22 +57,23 @@ export function ThemeToggle() {
   );
 }
 
-/** A small button for the top bar that flips between light and dark. */
-export function ThemeFlip() {
+/** A menu row that flips between light and dark. */
+export function ThemeMenuItem() {
   const [dark, setDark] = useState<boolean | null>(null);
-  const isDark = () => document.documentElement.dataset.theme === "dark" || (document.documentElement.dataset.theme !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const isDark = () =>
+    document.documentElement.dataset.theme === "dark" ||
+    (document.documentElement.dataset.theme !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
   return (
     <button
       type="button"
-      className="link-button"
-      aria-label="Switch between light and dark"
+      className="menu-item"
       onClick={() => {
         const next: Theme = isDark() ? "light" : "dark";
         apply(next);
         setDark(next === "dark");
       }}
     >
-      {dark === null ? "◐" : dark ? "☀" : "☾"}
+      {dark === null ? "Switch light / dark" : dark ? "Switch to light mode" : "Switch to dark mode"}
     </button>
   );
 }

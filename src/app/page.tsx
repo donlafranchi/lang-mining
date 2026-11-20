@@ -5,7 +5,6 @@ import { PasteForm } from "@/components/PasteForm";
 import { deckSummary } from "@/lib/deck";
 import { listSessions, type SessionRow } from "@/lib/sessions";
 import { effectiveStatus } from "@/lib/status";
-import { UserBar } from "@/components/UserBar";
 import { requireUser } from "@/lib/auth";
 import { preferredLanguage } from "@/lib/language-pref";
 
@@ -30,12 +29,6 @@ export default async function Home() {
 
   return (
     <main className="shell">
-      <UserBar name={user.name} isAdmin={user.isAdmin} />
-
-      <div className="brand">
-        <h1>Hand to Brain</h1>
-      </div>
-
       <InstallHint />
 
       <PasteForm helps={user.help} initialLanguage={await preferredLanguage()} />
