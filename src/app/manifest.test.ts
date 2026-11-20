@@ -28,7 +28,7 @@ describe("web manifest", () => {
   });
 
   it("uses the app's green and cream", () => {
-    expect(m.theme_color).toBe("#1f4d3a");
+    expect(m.theme_color).toBe("#0b1f3a");
     expect(m.background_color).toBe("#f6f2e8");
   });
 
