@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DeleteButton } from "@/components/DeleteButton";
 import { RenameTitle } from "@/components/RenameTitle";
+import { ShareButton } from "@/components/ShareButton";
 import { SessionView } from "@/components/SessionView";
 import { listSeenPatterns } from "@/lib/pattern-seen";
 import { coreRanksFor, coreWords } from "@/lib/core";
@@ -75,6 +76,7 @@ export default async function SessionPage(props: PageProps<"/sessions/[id]">) {
         coreRanks={coreRanks}
         coreForms={coreForms}
       />
+      {detail.enrichment && effectiveStatus(detail.session) === "ready" && <ShareButton id={detail.session.id} title={detail.session.title} />}
       {user.isAdmin && detail.session.source_type === "url" && (
         <p className="muted">
           <a href={`/api/admin/source-html?id=${detail.session.id}`}>Download the page HTML</a> (owner only, for fixing extra text)
