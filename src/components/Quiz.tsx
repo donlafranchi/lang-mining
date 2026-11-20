@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { DeckItem } from "@/lib/deck";
 import type { Language } from "@/lib/languages";
 import type { Rating } from "@/lib/srs";
+import { answerVariants, checkAnswer } from "@/lib/test-me";
 
 type Cards = Pick<DeckItem, "id" | "payload">[];
 
@@ -17,13 +18,28 @@ const RATINGS: { id: Rating; label: string; hint: string }[] = [
 export function Quiz(props: { cards: Cards; language: Language }) {
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
+  const [typed, setTyped] = useState("");
+  // How the typed answer went: right (or close), wrong, or null when they tapped Show answer instead.
+  const [result, setResult] = useState<"exact" | "close" | "wrong" | null>(
+    null,
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [tally, setTally] = useState<Record<Rating, number>>({ again: 0, good: 0, easy: 0 });
+  const [tally, setTally] = useState<Record<Rating, number>>({
+    again: 0,
+    good: 0,
+    easy: 0,
+  });
 
   const dir = props.language === "fa" ? "rtl" : "ltr";
   const card = props.cards[index];
   const total = props.cards.length;
+
+  function check() {
+    if (!card) return;
+    setResult(checkAnswer(typed, answerVariants(card.payload.english)));
+    setFlipped(true);
+  }
 
   async function rate(rating: Rating) {
     if (!card) return;
@@ -43,9 +59,13 @@ export function Quiz(props: { cards: Cards; language: Language }) {
       }
       setTally((t) => ({ ...t, [rating]: t[rating] + 1 }));
       setFlipped(false);
+      setTyped("");
+      setResult(null);
       setIndex((i) => i + 1);
     } catch {
-      setError("Could not reach the server. Check your connection and try again.");
+      setError(
+        "Could not reach the server. Check your connection and try again.",
+      );
     }
     setBusy(false);
   }
@@ -55,10 +75,14 @@ export function Quiz(props: { cards: Cards; language: Language }) {
       <div className="card stack">
         <div className="lead">Done</div>
         <p>
-          {total} reviewed: {tally.again} again, {tally.good} good, {tally.easy} easy.
+          {total} reviewed: {tally.again} again, {tally.good} good, {tally.easy}{" "}
+          easy.
         </p>
         <p className="muted">Cards you missed come back in 10 minutes.</p>
-        <Link className="btn secondary" href={`/quiz?language=${props.language}`}>
+        <Link
+          className="btn secondary"
+          href={`/quiz?language=${props.language}`}
+        >
           Check for more
         </Link>
       </div>
@@ -76,11 +100,28 @@ export function Quiz(props: { cards: Cards; language: Language }) {
           {card.payload.lemma}
         </div>
 
+        {flipped && result && (
+          <p className={result === "wrong" ? "error" : "lead"}>
+            {result === "exact"
+              ? "Right!"
+              : result === "close"
+                ? "Close enough, you got it."
+                : "Not quite."}
+            {result !== "wrong" && typed.trim() ? (
+              <span className="muted"> You typed “{typed.trim()}”.</span>
+            ) : null}
+          </p>
+        )}
+
         {flipped && (
           <div className="stack">
-            {card.payload.transliteration && <div className="translit">{card.payload.transliteration}</div>}
+            {card.payload.transliteration && (
+              <div className="translit">{card.payload.transliteration}</div>
+            )}
             <div className="quiz-answer">{card.payload.english}</div>
-            {card.payload.part_of_speech && <div className="muted">{card.payload.part_of_speech}</div>}
+            {card.payload.part_of_speech && (
+              <div className="muted">{card.payload.part_of_speech}</div>
+            )}
             {card.payload.example && (
               <div dir={dir} lang={props.language}>
                 “{card.payload.example}”
@@ -93,17 +134,68 @@ export function Quiz(props: { cards: Cards; language: Language }) {
       {error && <p className="error">{error}</p>}
 
       {!flipped ? (
-        <button className="btn" onClick={() => setFlipped(true)}>
-          Show answer
-        </button>
+        <form
+          className="stack"
+          onSubmit={(e) => {
+            e.preventDefault();
+            check();
+          }}
+        >
+          <input
+            className="testme-input"
+            type="text"
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            placeholder="type the English"
+            autoCapitalize="none"
+            autoCorrect="off"
+            autoComplete="off"
+            aria-label="English meaning"
+          />
+          <div className="deck-links">
+            <button className="btn" type="submit" disabled={!typed.trim()}>
+              Check
+            </button>
+            <button
+              className="btn secondary"
+              type="button"
+              onClick={() => setFlipped(true)}
+            >
+              Show answer
+            </button>
+          </div>
+        </form>
+      ) : result === "wrong" ? (
+        // A wrong typed answer counts as Again, unless they say they were right (a synonym we do not have stored).
+        <div className="rate-row">
+          <button className="btn" onClick={() => rate("again")} disabled={busy}>
+            Again
+            <span className="rate-hint">10 min</span>
+          </button>
+          <button
+            className="btn secondary"
+            onClick={() => rate("good")}
+            disabled={busy}
+          >
+            I was right
+            <span className="rate-hint">next box</span>
+          </button>
+        </div>
       ) : (
         <div className="rate-row">
-          {RATINGS.map((r) => (
-            <button key={r.id} className={r.id === "good" ? "btn" : "btn secondary"} onClick={() => rate(r.id)} disabled={busy}>
-              {r.label}
-              <span className="rate-hint">{r.hint}</span>
-            </button>
-          ))}
+          {RATINGS.filter((r) => result === null || r.id !== "again").map(
+            (r) => (
+              <button
+                key={r.id}
+                className={r.id === "good" ? "btn" : "btn secondary"}
+                onClick={() => rate(r.id)}
+                disabled={busy}
+              >
+                {r.label}
+                <span className="rate-hint">{r.hint}</span>
+              </button>
+            ),
+          )}
         </div>
       )}
     </div>

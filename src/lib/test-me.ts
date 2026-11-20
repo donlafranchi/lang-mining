@@ -34,10 +34,56 @@ export function normalizeAnswer(text: string): string {
     .trim();
 }
 
-/** Right when the typed English matches any known meaning, ignoring case, "to", articles and punctuation. */
-export function isCorrect(typed: string, answers: string[]): boolean {
+/** Strip a plural, -ing or -ed ending so "houses", "running" and "walked" meet "house", "run" and "walk". */
+function stem(word: string): string {
+  return word
+    .split(" ")
+    .map((w) =>
+      w.length > 4
+        ? w.replace(/(ing|ed|es|s)$/, "").replace(/(.)\1$/, "$1")
+        : w,
+    )
+    .join(" ");
+}
+
+function withinOneEdit(a: string, b: string): boolean {
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  if (a.length === b.length)
+    return (
+      a.slice(i + 1) === b.slice(i + 1) ||
+      (a[i] === b[i + 1] &&
+        a[i + 1] === b[i] &&
+        a.slice(i + 2) === b.slice(i + 2))
+    );
+  const [long, short] = a.length > b.length ? [a, b] : [b, a];
+  return long.slice(i + 1) === short.slice(i);
+}
+
+/**
+ * "exact": matches a stored meaning once case, "to", articles and punctuation are ignored.
+ * "close": same word with a different ending (houses/house, running/run) or one typo in a long word (6+ letters), since in short words one letter makes a different word (horse/house).
+ * "wrong": anything else. Two short words one letter apart (dog/dot) are different words, so they stay wrong.
+ */
+export function checkAnswer(
+  typed: string,
+  answers: string[],
+): "exact" | "close" | "wrong" {
   const t = normalizeAnswer(typed);
-  return t.length > 0 && answers.includes(t);
+  if (t.length === 0) return "wrong";
+  if (answers.includes(t)) return "exact";
+  const st = stem(t);
+  for (const a of answers) {
+    if (stem(a) === st) return "close";
+    if (Math.min(t.length, a.length) >= 6 && withinOneEdit(t, a)) return "close";
+  }
+  return "wrong";
+}
+
+/** Right (exactly or closely) for the purposes of scoring. */
+export function isCorrect(typed: string, answers: string[]): boolean {
+  return checkAnswer(typed, answers) !== "wrong";
 }
 
 /** Up to `count` questions from one paragraph's word rows, core-2000 words first, then the rest in order of appearance. */
