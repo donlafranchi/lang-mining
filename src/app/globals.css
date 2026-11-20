@@ -291,7 +291,13 @@ table.conj td {
 
 table.conj td:first-child {
   color: var(--muted);
-  width: 40%;
+  width: 45%;
+  text-align: right;
+  padding-right: 14px;
+}
+
+table.conj td:last-child {
+  text-align: left;
 }
 
 .segment .es {
@@ -691,32 +697,6 @@ details.word-details summary {
 details.word-details summary::-webkit-details-marker {
   display: none;
 }
-.word-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 2px;
-  font-size: 0.9rem;
-}
-.expand-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 10px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--chip);
-  color: var(--ink);
-  font-size: 0.8rem;
-  white-space: nowrap;
-}
-.expand-chip::after {
-  content: "▾";
-}
-details.word-details[open] .expand-chip::after {
-  content: "▴";
-}
 .word-body {
   padding: 8px 0 4px;
 }
@@ -737,8 +717,7 @@ button.pattern-row:last-child {
 .word-top {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
 }
 .word-pos {
   font-size: 0.85rem;
@@ -880,4 +859,36 @@ progress {
   background: var(--accent-ink);
   color: var(--accent);
   flex-shrink: 0;
+}
+
+/* The right-hand column of a row: add at the top, and for verbs an arrow at the bottom saying the row opens. */
+.word-side {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.word-arrow::after {
+  content: "▾";
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 6px 8px;
+}
+details.word-details[open] .word-arrow::after {
+  content: "▴";
+}
+details.word-details {
+  border-bottom: 1px solid var(--line);
+}
+details.word-details:last-child {
+  border-bottom: 0;
+}
+details.word-details > summary.word-row {
+  border-bottom: 0;
+}
+details.word-details > .word-body {
+  padding: 0 14px 12px;
 }

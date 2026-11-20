@@ -29,20 +29,21 @@ function savable(row: WordRow) {
 
 /**
  * The same layout for every word, in the order a dictionary uses. Line 1: the form as written in bold, its kind of
- * word in small italics after it, and "irregular" at the right edge. Line 2: the dictionary form and its meaning.
- * Line 3 (when there is any): short tags such as "gerund (-ing)", and for verbs a "Conjugation" chip showing the row opens.
+ * word in small italics after it (with "(irregular)" for irregular verbs). Line 2: the dictionary form and its meaning.
+ * Line 3 (when there is any): short tags such as "present, third person singular", with the full width to itself.
  */
-function Entry(props: { written: string; lemma: string; english: string; senses?: string[]; pos: string; tags?: string[]; irregular?: boolean; expandable?: boolean }) {
+function Entry(props: { written: string; lemma: string; english: string; senses?: string[]; pos: string; tags?: string[]; irregular?: boolean }) {
   const meanings = props.senses && props.senses.length > 1 ? props.senses.slice(0, 4).join(", ") : props.english;
   const same = props.written.toLowerCase() === props.lemma.toLowerCase();
   const tags = props.tags ?? [];
   return (
     <div className="word-entry">
       <div className="word-top">
-        <span>
-          <span className="lead">{props.written}</span> <span className="word-pos">{posLabel(props.pos)}</span>
+        <span className="lead">{props.written}</span>{" "}
+        <span className="word-pos">
+          {posLabel(props.pos)}
+          {props.irregular ? " (irregular)" : ""}
         </span>
-        {props.irregular && <span className="pill">irregular</span>}
       </div>
       <div className="word-line">
         {same ? meanings : (
@@ -51,12 +52,7 @@ function Entry(props: { written: string; lemma: string; english: string; senses?
           </>
         )}
       </div>
-      {(tags.length > 0 || props.expandable) && (
-        <div className="word-meta">
-          <span className="muted">{tags.join(" · ")}</span>
-          {props.expandable && <span className="expand-chip">Conjugation</span>}
-        </div>
-      )}
+      {tags.length > 0 && <div className="word-line muted">{tags.join(" · ")}</div>}
     </div>
   );
 }
@@ -148,23 +144,34 @@ export function WordList(props: { rows: WordRow[]; sessionId: string; language?:
   return (
     <div className="stack">
       <div className="word-list">
-        {props.rows.map((row, i) => (
-          <div key={i} className="word-row">
-            <div className="word-main">
-              {row.kind === "word" ? (
-                <Entry written={row.vocab.surface_form} lemma={row.vocab.lemma} english={row.vocab.english} senses={row.vocab.senses} pos={row.vocab.part_of_speech} />
-              ) : (
-                <details className="word-details">
-                  <summary>
-                    <Entry written={row.verb.form_in_source} lemma={row.verb.infinitive} english={row.verb.english} senses={row.senses} pos="verb" tags={verbTags(row.verb)} irregular={row.verb.irregular} expandable />
-                  </summary>
-                  <VerbBody verb={row.verb} />
-                </details>
-              )}
-            </div>
-            <SaveWordButton word={savable(row)} language={language} sessionId={props.sessionId} compact />
-          </div>
-        ))}
+        {props.rows.map((row, i) => {
+          const add = <SaveWordButton word={savable(row)} language={language} sessionId={props.sessionId} compact />;
+          if (row.kind === "word") {
+            return (
+              <div key={i} className="word-row">
+                <div className="word-main">
+                  <Entry written={row.vocab.surface_form} lemma={row.vocab.lemma} english={row.vocab.english} senses={row.vocab.senses} pos={row.vocab.part_of_speech} />
+                </div>
+                <div className="word-side">{add}</div>
+              </div>
+            );
+          }
+          // A verb opens to its conjugation: add stays at the top right, the arrow sits at the bottom right.
+          return (
+            <details key={i} className="word-details">
+              <summary className="word-row">
+                <div className="word-main">
+                  <Entry written={row.verb.form_in_source} lemma={row.verb.infinitive} english={row.verb.english} senses={row.senses} pos="verb" tags={verbTags(row.verb)} irregular={row.verb.irregular} />
+                </div>
+                <div className="word-side">
+                  <span onClick={(e) => e.preventDefault()}>{add}</span>
+                  <span className="word-arrow" aria-hidden="true" />
+                </div>
+              </summary>
+              <VerbBody verb={row.verb} />
+            </details>
+          );
+        })}
       </div>
       <SaveAllButton words={props.rows.map(savable)} language={language} sessionId={props.sessionId} />
     </div>
