@@ -11,8 +11,8 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     orientation: "portrait",
     categories: ["education"],
-    background_color: "#f6f2e8",
-    theme_color: "#0b1f3a",
+    background_color: "#f3f0f1",
+    theme_color: "#576668",
     icons: [
       // The icon is full-bleed green with the mark well inside the middle 80%, so one file serves both uses.
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
