@@ -22,6 +22,10 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "verbs", label: "Verbs" },
 ];
 
+// The Read / Vocab / Idioms row is switched off for Spanish while lessons are short: everything is on the one page.
+// Turn this on to bring it back (the Vocab and Idioms tabs are still built).
+const SHOW_SPANISH_TABS = false;
+
 export function SessionView(props: {
   session: SessionRow;
   enrichment: Lesson | null;
@@ -124,6 +128,7 @@ export function SessionView(props: {
       {enrichment && (
         <>
           {props.model && <p className="muted">Built with {modelLabel(props.model)}.</p>}
+          {(props.session.language === "fa" || SHOW_SPANISH_TABS) && (
           <div className="tabs" role="tablist">
             {TABS.filter((t) => !(props.session.language !== "fa" && t.id === "verbs")).map((t) => (
               <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}>
@@ -131,6 +136,7 @@ export function SessionView(props: {
               </button>
             ))}
           </div>
+          )}
           {props.session.language === "fa" ? (
             <FarsiLesson e={enrichment as FarsiEnrichment} tab={tab} sessionId={props.session.id} seenPatterns={props.seenPatterns} coreRanks={props.coreRanks} coreForms={props.coreForms} />
           ) : (

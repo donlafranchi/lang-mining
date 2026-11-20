@@ -3,10 +3,10 @@ import { defaultHelp, type HelpLevel } from "../help";
 import type { Language } from "../languages";
 
 const SPANISH_WORDS_RULE: Record<HelpLevel, string> = {
-  full: "an entry for EVERY distinct word in the paragraph, including small words like el, la, de, que, y and en, so the learner can see what each word means. List them in the order they first appear and give each word once per paragraph",
+  full: "an entry for EVERY distinct word in the paragraph, including small words like el, la, de, que, y and en, so the learner can see what each word means. List them in the order they first appear and give each word once per paragraph. Leave out proper nouns (names of people, places, organizations and brands)",
   medium:
-    "an entry for every distinct content word (nouns, verbs, adjectives, adverbs and pronouns). Skip the most basic small words such as el, la, un, de, que, y, en, a and es. List them in the order they first appear and give each word once per paragraph",
-  light: "up to 6 of the most useful words for a learner",
+    "an entry for every distinct content word (nouns, verbs, adjectives, adverbs and pronouns). Skip the most basic small words such as el, la, un, de, que, y, en, a and es. List them in the order they first appear and give each word once per paragraph. Leave out proper nouns (names of people, places, organizations and brands)",
+  light: "up to 6 of the most useful words for a learner (never proper nouns such as names of people, places, organizations or brands)",
 };
 
 const SPANISH_VERBS_RULE: Record<HelpLevel, string> = {
@@ -58,9 +58,9 @@ Rules:
 }
 
 const FARSI_WORDS_RULE: Record<HelpLevel, string> = {
-  full: "an entry for EVERY distinct word in the paragraph, including small words like و (and), در (in), به (to) and که (that), so the learner can see what each word means. List them in the order they first appear and give each word once per paragraph",
+  full: "an entry for EVERY distinct word in the paragraph, including small words like و (and), در (in), به (to) and که (that), so the learner can see what each word means. List them in the order they first appear and give each word once per paragraph. Leave out proper nouns (names of people, places, organizations and brands)",
   medium:
-    "an entry for every distinct content word (nouns, verbs, adjectives, adverbs and pronouns). Skip the most basic small words such as و, در, به, از, که and را. List them in the order they first appear and give each word once per paragraph",
+    "an entry for every distinct content word (nouns, verbs, adjectives, adverbs and pronouns). Skip the most basic small words such as و, در, به, از, که and را. List them in the order they first appear and give each word once per paragraph. Leave out proper nouns (names of people, places, organizations and brands)",
   light: "up to 8 of the most useful words for a learner",
 };
 

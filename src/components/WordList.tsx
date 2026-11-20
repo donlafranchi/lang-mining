@@ -28,20 +28,21 @@ function savable(row: WordRow) {
 }
 
 /**
- * The same layout for every word. Line 1: the form as written, with its kind of word at the right edge. Line 2: the
- * dictionary form and its meaning. Line 3 (when there is any): short tags such as "gerund (-ing)" or "irregular".
+ * The same layout for every word, in the order a dictionary uses. Line 1: the form as written in bold, its kind of
+ * word in small italics after it, and "irregular" at the right edge. Line 2: the dictionary form and its meaning.
+ * Line 3 (when there is any): short tags such as "gerund (-ing)", and for verbs a "Conjugation" chip showing the row opens.
  */
-function Entry(props: { written: string; lemma: string; english: string; senses?: string[]; pos: string; tags?: string[]; irregular?: boolean }) {
+function Entry(props: { written: string; lemma: string; english: string; senses?: string[]; pos: string; tags?: string[]; irregular?: boolean; expandable?: boolean }) {
   const meanings = props.senses && props.senses.length > 1 ? props.senses.slice(0, 4).join(", ") : props.english;
   const same = props.written.toLowerCase() === props.lemma.toLowerCase();
+  const tags = props.tags ?? [];
   return (
     <div className="word-entry">
       <div className="word-top">
-        <span className="lead">{props.written}</span>
-        <span className="word-corner">
-          {props.irregular && <span className="pill">irregular</span>}
-          <span className="word-pos">{posLabel(props.pos)}</span>
+        <span>
+          <span className="lead">{props.written}</span> <span className="word-pos">{posLabel(props.pos)}</span>
         </span>
+        {props.irregular && <span className="pill">irregular</span>}
       </div>
       <div className="word-line">
         {same ? meanings : (
@@ -50,7 +51,12 @@ function Entry(props: { written: string; lemma: string; english: string; senses?
           </>
         )}
       </div>
-      {props.tags && props.tags.length > 0 && <div className="word-line muted">{props.tags.join(" · ")}</div>}
+      {(tags.length > 0 || props.expandable) && (
+        <div className="word-meta">
+          <span className="muted">{tags.join(" · ")}</span>
+          {props.expandable && <span className="expand-chip">Conjugation</span>}
+        </div>
+      )}
     </div>
   );
 }
@@ -150,7 +156,7 @@ export function WordList(props: { rows: WordRow[]; sessionId: string; language?:
               ) : (
                 <details className="word-details">
                   <summary>
-                    <Entry written={row.verb.form_in_source} lemma={row.verb.infinitive} english={row.verb.english} senses={row.senses} pos="verb" tags={verbTags(row.verb)} irregular={row.verb.irregular} />
+                    <Entry written={row.verb.form_in_source} lemma={row.verb.infinitive} english={row.verb.english} senses={row.senses} pos="verb" tags={verbTags(row.verb)} irregular={row.verb.irregular} expandable />
                   </summary>
                   <VerbBody verb={row.verb} />
                 </details>

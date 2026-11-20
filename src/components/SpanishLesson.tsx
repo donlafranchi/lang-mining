@@ -1,6 +1,6 @@
 "use client";
 
-import { allIdioms, keyWords } from "@/lib/enrichment/flatten";
+import { allIdioms } from "@/lib/enrichment/flatten";
 import { paragraphRows, type WordRow } from "@/lib/enrichment/rows";
 import type { Enrichment, Idiom } from "@/lib/enrichment/schema";
 import { lessonPatterns, patternById } from "@/lib/patterns";
@@ -42,7 +42,6 @@ function Reader({
   e,
   sessionId,
   seenPatterns,
-  coreRanks,
   coreForms,
 }: {
   e: Enrichment;
@@ -52,7 +51,6 @@ function Reader({
   coreForms: Record<string, number>;
 }) {
   const patterns = lessonPatterns(e.paragraphs);
-  const words = keyWords(e, coreRanks);
   const pages = e.paragraphs.map((p, i) => {
     // Only patterns this person has not been shown are highlighted, so a known one never nags.
     const fresh = (p.patterns ?? []).filter((u) => patternById(u.id) && !seenPatterns.includes(u.id));
@@ -91,18 +89,9 @@ function Reader({
 
   return (
     <div className="stack">
-      {words.length > 0 && (
-        <div className="key-words" aria-label="Key words">
-          {words.map((v) => (
-            <span key={v.lemma} className="pill">
-              {v.lemma} · {v.english}
-            </span>
-          ))}
-        </div>
-      )}
       <details className="item">
         <summary>
-          <span className="lead">Overview in English</span>
+          <span className="lead">English Overview</span>
         </summary>
         <div className="body">{e.summary}</div>
       </details>

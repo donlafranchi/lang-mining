@@ -6,7 +6,7 @@ import { enrichmentSchema, type Dialect } from "./enrichment/schema";
 import { analyzerFromEnv } from "./analysis/http-analyzer";
 import { harvestSafely } from "./lexicon/harvest";
 import { supabaseLexiconStore } from "./lexicon/store";
-import { cleanTitle } from "./titles";
+import { cleanTitle, pageTitleToLesson } from "./titles";
 import { fetchArticleText, looksLikeUrl } from "./ingest/extract";
 import { defaultHelp, type HelpLevel } from "./help";
 import { resolveLanguage, type Language } from "./languages";
@@ -61,7 +61,7 @@ function toSessionRow(raw: Record<string, unknown>): SessionRow {
 }
 
 function titleFor(text: string, url: string | null, pageTitle = ""): string {
-  if (pageTitle) return pageTitle.length > 80 ? `${pageTitle.slice(0, 80)}…` : pageTitle;
+  if (pageTitle) return pageTitleToLesson(pageTitle);
   if (url) return new URL(url).hostname.replace(/^www\./, "");
   const oneLine = text.replace(/\s+/g, " ").trim();
   return oneLine.length > 50 ? `${oneLine.slice(0, 50)}…` : oneLine;
@@ -84,7 +84,7 @@ export async function createSession(args: {
   userId: string;
   /** The help level the lesson will be built at. Together with the language it decides whether a shared copy fits. */
   help?: HelpLevel;
-}): Promise<{ id: string; text: string; autoTitle: string | null; libraryKey: string | null; reused: boolean }> {
+}): Promise<{ id: string; text: string; autoTitle: string | null; libraryKey: string | null; reused: boolean; lessonTitle: string | null }> {
   const input = args.input.trim();
   if (!input) throw new UserFacingError("Paste some text or a link first.");
 
@@ -156,10 +156,10 @@ export async function createSession(args: {
     const reused = await reuseFromLibrary(session.id, key);
     if (reused) {
       await applyModelTitle(session.id, autoTitle, reused.title);
-      return { id: session.id, text, autoTitle, libraryKey: key, reused: true };
+      return { id: session.id, text, autoTitle, libraryKey: key, reused: true, lessonTitle: pageTitle ? pageTitleToLesson(pageTitle) : null };
     }
   }
-  return { id: session.id, text, autoTitle, libraryKey: key, reused: false };
+  return { id: session.id, text, autoTitle, libraryKey: key, reused: false, lessonTitle: pageTitle ? pageTitleToLesson(pageTitle) : null };
 }
 
 /**
@@ -199,10 +199,13 @@ export async function buildSession(args: {
   autoTitle?: string | null;
   /** Set for lessons from a link: once built, the lesson is offered to the next person who adds the same article. */
   libraryKey?: string | null;
+  /** The article's own title. It becomes the lesson's first paragraph, so its words are explained too. */
+  lessonTitle?: string | null;
 }): Promise<void> {
   try {
     const enrichment = await enrichText({
       text: args.text,
+      title: args.lessonTitle ?? undefined,
       language: args.language,
       help: args.help,
       complete: createAnthropicComplete(args.model),
