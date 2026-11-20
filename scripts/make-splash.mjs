@@ -10,10 +10,10 @@ const SIZES = [
   [375, 812, 3], [414, 896, 3], [414, 896, 2], [414, 736, 3], [375, 667, 2], [320, 568, 2],
 ];
 
-const page = (w, h) => `<html><body style="margin:0;width:${w}px;height:${h}px;background:#f6f2e8;display:flex;flex-direction:column;
-align-items:center;justify-content:center;text-align:center;font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;color:#1c1a16">
+const page = (w, h) => `<html><body style="margin:0;width:${w}px;height:${h}px;background:#f3f0f1;display:flex;flex-direction:column;
+align-items:center;justify-content:center;text-align:center;font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;color:#2b292c">
 <div style="font-size:${Math.round(w * 0.1)}px;font-weight:700;letter-spacing:-0.02em">Hand to Brain</div>
-<div style="font-size:${Math.round(w * 0.042)}px;color:#6b665b;margin-top:6px">a language learning app</div>
+<div style="font-size:${Math.round(w * 0.042)}px;color:#6c7d85;margin-top:6px">a language learning app</div>
 <div style="font-size:${Math.round(w * 0.42)}px;line-height:1;margin-top:${Math.round(w * 0.08)}px">🤦</div>
 </body></html>`;
 

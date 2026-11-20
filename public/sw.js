@@ -7,7 +7,7 @@
 //
 // Bump VERSION to drop every cache from older versions.
 
-const VERSION = "v5";
+const VERSION = "v6";
 const STATIC_CACHE = `static-${VERSION}`;
 const OFFLINE_URL = "/offline";
 const PRECACHE = [OFFLINE_URL, "/icons/icon-192.png", "/icons/icon-512.png"];

@@ -27,9 +27,9 @@ describe("web manifest", () => {
     expect(m.description).toMatch(/Farsi/);
   });
 
-  it("uses the app's green and cream", () => {
-    expect(m.theme_color).toBe("#0b1f3a");
-    expect(m.background_color).toBe("#f6f2e8");
+  it("uses the Coastal Slate colours", () => {
+    expect(m.theme_color).toBe("#576668");
+    expect(m.background_color).toBe("#f3f0f1");
   });
 
   it("has 192 and 512 icons for both any and maskable use", () => {
