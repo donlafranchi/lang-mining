@@ -7,6 +7,8 @@ import { lessonPatterns, patternById } from "@/lib/patterns";
 import { HighlightedText } from "./HighlightedText";
 import { KnownPatterns } from "./PatternCard";
 import { PatternRows } from "./PatternSheet";
+import { TestMe } from "./TestMe";
+import { pickQuestions } from "@/lib/test-me";
 import { RemoveParagraph } from "./RemoveParagraph";
 import { Pager } from "./Pager";
 import { WordList } from "./WordList";
@@ -45,6 +47,7 @@ function Reader({
   e,
   sessionId,
   seenPatterns,
+  coreRanks,
   coreForms,
   canEdit,
 }: {
@@ -89,6 +92,7 @@ function Reader({
             </div>
           </div>
         </details>
+        <TestMe key={i} questions={pickQuestions(paragraphRows(p.spanish, p.vocab, p.verbs), coreRanks)} />
       </div>
     );
   });
