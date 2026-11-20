@@ -10,7 +10,7 @@ export type SignupResult =
   | { ok: false; status: 400 | 403 | 409 | 503; code: SignupFailureCode; message: string };
 
 const TEXT: Record<SignupFailureCode, string> = {
-  missing: "Fill in your name, a password and the invite code.",
+  missing: "Fill in your name and a password (and the invite code, if you were given one).",
   closed: "Sign-up is closed right now. Ask the owner for an account.",
   bad_code: "That invite code is not right.",
   bad_name: "That name is not allowed. Use 40 characters or fewer, with no control characters.",
@@ -26,17 +26,17 @@ export function signupErrorText(code: unknown): string | null {
 const fail = (status: 400 | 403 | 409 | 503, code: SignupFailureCode): SignupResult => ({ ok: false, status, code, message: TEXT[code] });
 
 /**
- * Create your own account. Needs the invite code the owner set (SIGNUP_CODE), so a stranger who finds the link cannot
- * make accounts and spend the owner's lesson budget. With no code set, sign-up is closed. Always a normal user, never an owner.
+ * Create your own account. Open to anyone with the link by default (Don's call). If the owner sets SIGNUP_CODE,
+ * the invite code is required too, which stops strangers making accounts and spending the lesson budget. Always a normal user, never an owner.
  */
 export async function signUp(
   repo: UserRepo,
   input: { name: string; passcode: string; code: string },
   ctx: { signupCode: string | undefined },
 ): Promise<SignupResult> {
-  if (!ctx.signupCode) return fail(503, "closed");
-  if (input.name.trim() === "" || input.passcode === "" || input.code === "") return fail(400, "missing");
-  if (!safeEqual(input.code.trim(), ctx.signupCode)) return fail(403, "bad_code");
+  const needCode = !!ctx.signupCode;
+  if (input.name.trim() === "" || input.passcode === "" || (needCode && input.code === "")) return fail(400, "missing");
+  if (needCode && !safeEqual(input.code.trim(), ctx.signupCode!)) return fail(403, "bad_code");
   if (validateName(input.name)) return fail(400, "bad_name");
   if (validatePasscode(input.passcode)) return fail(400, "bad_password");
   // The first account is the owner and is made by signing in with APP_PASSCODE, never here.

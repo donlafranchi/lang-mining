@@ -11,7 +11,7 @@ export default async function SignupPage(props: PageProps<"/signup">) {
   if (await currentUser().catch(() => null)) redirect("/");
   return (
     <main className="shell">
-      <SignupForm error={signupErrorText(code)} />
+      <SignupForm error={signupErrorText(code)} needCode={!!process.env.SIGNUP_CODE} />
     </main>
   );
 }
