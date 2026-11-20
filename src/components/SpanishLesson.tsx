@@ -7,6 +7,7 @@ import { lessonPatterns, patternById } from "@/lib/patterns";
 import { HighlightedText } from "./HighlightedText";
 import { KnownPatterns } from "./PatternCard";
 import { PatternRows } from "./PatternSheet";
+import { RemoveParagraph } from "./RemoveParagraph";
 import { Pager } from "./Pager";
 import { WordList } from "./WordList";
 
@@ -23,16 +24,18 @@ export function SpanishLesson({
   seenPatterns,
   coreRanks,
   coreForms,
+  canEdit,
 }: {
   e: Enrichment;
   tab: SpanishTab;
   sessionId: string;
+  canEdit?: boolean;
   /** Pattern ids this person has already been shown. */
   seenPatterns: string[];
   coreRanks: Record<string, number>;
   coreForms: Record<string, number>;
 }) {
-  if (tab === "read") return <Reader e={e} sessionId={sessionId} seenPatterns={seenPatterns} coreRanks={coreRanks} coreForms={coreForms} />;
+  if (tab === "read") return <Reader e={e} sessionId={sessionId} seenPatterns={seenPatterns} coreRanks={coreRanks} coreForms={coreForms} canEdit={canEdit} />;
   if (tab === "vocab") return <WordList rows={lessonRows(e)} sessionId={sessionId} />;
   if (tab === "idioms") return <IdiomList items={allIdioms(e)} />;
   return <WordList rows={lessonRows(e)} sessionId={sessionId} />;
@@ -43,12 +46,14 @@ function Reader({
   sessionId,
   seenPatterns,
   coreForms,
+  canEdit,
 }: {
   e: Enrichment;
   sessionId: string;
   seenPatterns: string[];
   coreRanks: Record<string, number>;
   coreForms: Record<string, number>;
+  canEdit?: boolean;
 }) {
   const patterns = lessonPatterns(e.paragraphs);
   const pages = e.paragraphs.map((p, i) => {
@@ -60,17 +65,18 @@ function Reader({
         <div className="card para-es">
           <HighlightedText text={p.spanish} forms={coreForms} marks={fresh} />
         </div>
-        <div className="stack">
-          <div className="section-label">Vocabulary</div>
-          <WordList rows={paragraphRows(p.spanish, p.vocab, p.verbs)} sessionId={sessionId} />
-        </div>
-        <PatternRows uses={freshUses} language="es" />
+        {canEdit && <RemoveParagraph sessionId={sessionId} index={i} />}
         {p.idioms.length > 0 && (
           <div className="stack">
             <div className="section-label">Idioms</div>
             <IdiomList items={p.idioms} />
           </div>
         )}
+        <div className="stack">
+          <div className="section-label">Vocabulary</div>
+          <WordList rows={paragraphRows(p.spanish, p.vocab, p.verbs)} sessionId={sessionId} />
+        </div>
+        <PatternRows uses={freshUses} language="es" />
         <details className="item">
           <summary>
             <span className="lead">English</span>

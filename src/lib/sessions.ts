@@ -11,6 +11,7 @@ import { fetchArticleText, looksLikeUrl } from "./ingest/extract";
 import { defaultHelp, type HelpLevel } from "./help";
 import { resolveLanguage, type Language } from "./languages";
 import type { ModelId } from "./models";
+import { blockedKeysFor, filterBlocked, siteOf } from "./blocklist";
 import { libraryKey, reuseFromLibrary, shareLesson, unshareLesson } from "./library";
 import { notifyLesson } from "./push";
 import { db } from "./supabase";
@@ -101,6 +102,8 @@ export async function createSession(args: {
       sourceUrl = fetched.finalUrl;
       pageTitle = fetched.title;
       pageHtml = fetched.html;
+      // Lines this site has taught us to skip (a video title, a date label) are removed before anything else.
+      text = filterBlocked(text, await blockedKeysFor(siteOf(sourceUrl)));
     } catch (err) {
       throw new UserFacingError(err instanceof Error ? err.message : "Could not read that link.");
     }
