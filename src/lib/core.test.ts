@@ -74,6 +74,11 @@ describe("coreBatch", () => {
     expect(b.nextStart).toBe(6);
   });
 
+  it("points back to the previous batch, or nothing at the start", () => {
+    expect(coreBatch(words, new Set(), { size: 2 }).prevStart).toBeNull();
+    expect(coreBatch(words, new Set(), { start: 5, size: 2 }).prevStart).toBe(3);
+  });
+
   it("can include every kind of word", () => {
     const b = coreBatch(words, new Set(), { size: 2, contentOnly: false });
     expect(b.words.map((w) => w.lemma)).toEqual(["de", "la"]);

@@ -94,6 +94,8 @@ export type CoreBatch = {
   words: CoreWord[];
   /** The rank to start the following batch from, or null when this one reaches the end of the list. */
   nextStart: number | null;
+  /** The rank to start the previous batch from, or null when nothing earlier is left to offer. */
+  prevStart: number | null;
 };
 
 /**
@@ -106,8 +108,11 @@ export function coreBatch(
   options: { start?: number; size?: number; contentOnly?: boolean } = {},
 ): CoreBatch {
   const { start = 1, size = 20, contentOnly = true } = options;
-  const candidates = words.filter((w) => w.rank >= start && !deckKeys.has(deckKey(w.lemma)) && (!contentOnly || CONTENT_POS.has(w.part_of_speech)));
+  const offered = words.filter((w) => !deckKeys.has(deckKey(w.lemma)) && (!contentOnly || CONTENT_POS.has(w.part_of_speech)));
+  const candidates = offered.filter((w) => w.rank >= start);
+  const earlier = offered.filter((w) => w.rank < start);
   const batch = candidates.slice(0, size);
   const nextStart = candidates.length > size ? batch[batch.length - 1].rank + 1 : null;
-  return { words: batch, nextStart };
+  const prevStart = earlier.length > 0 ? earlier[Math.max(0, earlier.length - size)].rank : null;
+  return { words: batch, nextStart, prevStart };
 }
