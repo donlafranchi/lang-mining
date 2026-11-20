@@ -892,3 +892,8 @@ details.word-details > summary.word-row {
 details.word-details > .word-body {
   padding: 0 14px 12px;
 }
+
+.core-intro {
+  margin: 12px 0 20px;
+  line-height: 1.5;
+}
