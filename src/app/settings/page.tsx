@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SettingsForm } from "@/components/SettingsForm";
 import { NotificationsToggle } from "@/components/NotificationsToggle";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { UnderlineToggle } from "@/components/UnderlineToggle";
 import { requireUser } from "@/lib/auth";
 import { underlineOn } from "@/lib/underline-pref";
@@ -21,6 +22,7 @@ export default async function SettingsPage() {
       </div>
       <p className="muted">How many words each new lesson explains. Full explains every word, light only the key ones.</p>
       <SettingsForm helps={user.help} />
+      <ThemeToggle />
       <UnderlineToggle initiallyOn={await underlineOn()} />
       <NotificationsToggle publicKey={vapid?.publicKey ?? null} initiallyOn={vapid ? await hasSubscription(user.id) : false} />
     </main>
