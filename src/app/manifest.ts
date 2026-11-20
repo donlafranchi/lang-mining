@@ -12,7 +12,7 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "portrait",
     categories: ["education"],
     background_color: "#f6f2e8",
-    theme_color: "#1f4d3a",
+    theme_color: "#0b1f3a",
     icons: [
       // The icon is full-bleed green with the mark well inside the middle 80%, so one file serves both uses.
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
