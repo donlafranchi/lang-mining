@@ -11,8 +11,9 @@
   --chip: #dde7ec;
 }
 
+/* Dark follows the phone unless a choice is saved: data-theme is set from Settings (see lib/theme.ts). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #1e1d1f;
     --surface: #2b292c;
     --ink: #f3f0f1;
@@ -24,6 +25,23 @@
     --chip: #38454a;
     color-scheme: dark;
   }
+}
+
+:root[data-theme="dark"] {
+    --bg: #1e1d1f;
+    --surface: #2b292c;
+    --ink: #f3f0f1;
+    --muted: #9fb0b8;
+    --line: #424b4f;
+    --accent: #c5d6de;
+    --accent-ink: #2b292c;
+    --danger: #ff8a80;
+    --chip: #38454a;
+    color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
 }
 
 * {
@@ -736,4 +754,9 @@ button.pattern-row:last-child {
 
 progress {
   accent-color: var(--accent);
+}
+
+.theme-tabs {
+  grid-template-columns: repeat(3, 1fr);
+  position: static;
 }
