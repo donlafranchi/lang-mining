@@ -29,3 +29,54 @@ export function farsiParagraphRows(text: string, wordsAll: FarsiWord[], verbs: F
     .sort((a, b) => a.at - b.at || a.i - b.i)
     .map((x) => x.e.row);
 }
+
+/** What a tapped word shows: how it is written, how to say it, what it means, and what to save. */
+export type Gloss = {
+  written: string;
+  translit: string;
+  meaning: string;
+  pos: string;
+  lemma: string;
+  save: { lemma: string; english: string; part_of_speech: string; transliteration: string; example_fragment: string };
+};
+
+/** The form of a word used to match it to the text: no vowel marks, joiners or punctuation. */
+export function glossKey(text: string): string {
+  return text
+    .replace(/[\u064B-\u065F\u200C\u200D\u200E\u200F]/g, "")
+    .replace(/[\s.,;:!?"'()[\]{}«»“”‘’…،؛؟\-–—]/g, "")
+    .toLowerCase();
+}
+
+/** Every word and verb of a paragraph by the form it takes in the text, so a tap can show its meaning. */
+export function farsiGlosses(rows: FarsiRow[]): Map<string, Gloss> {
+  const out = new Map<string, Gloss>();
+  for (const r of rows) {
+    if (r.kind === "word") {
+      const w = r.word;
+      const key = glossKey(w.surface);
+      if (key && !out.has(key))
+        out.set(key, {
+          written: w.surface,
+          translit: w.transliteration,
+          meaning: w.senses && w.senses.length > 1 ? w.senses.slice(0, 4).join(", ") : w.english,
+          pos: w.part_of_speech,
+          lemma: w.lemma,
+          save: { lemma: w.lemma, english: w.english, part_of_speech: w.part_of_speech, transliteration: w.transliteration, example_fragment: "" },
+        });
+    } else {
+      const v = r.verb;
+      const key = glossKey(v.form_in_source);
+      if (key && !out.has(key))
+        out.set(key, {
+          written: v.form_in_source,
+          translit: v.form_transliteration,
+          meaning: v.form_english,
+          pos: "verb",
+          lemma: v.infinitive,
+          save: { lemma: v.infinitive, english: v.english, part_of_speech: "verb", transliteration: v.transliteration, example_fragment: "" },
+        });
+    }
+  }
+  return out;
+}

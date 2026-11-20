@@ -964,3 +964,17 @@ input.testme-input:focus {
   font-weight: 600;
   color: var(--ink);
 }
+
+/* A word you can tap for its meaning. No line of its own, so the common-word underline still shows. */
+.tap-word {
+  cursor: pointer;
+  border-radius: 4px;
+}
+.tap-word:active,
+.tap-word:focus-visible {
+  background: var(--line);
+  outline: none;
+}
+.small-hint {
+  font-size: 0.85rem;
+}
