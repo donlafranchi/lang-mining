@@ -1,4 +1,4 @@
-export const MAX_TITLE_CHARS = 120;
+export const MAX_TITLE_CHARS = 250;
 
 /** A title as typed: spaces tidied, never empty, never longer than the list can show. Returns the problem when invalid. */
 export function cleanTitle(raw: unknown): { ok: true; title: string } | { ok: false; message: string } {
