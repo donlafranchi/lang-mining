@@ -25,6 +25,6 @@ export const config = {
   matcher: [
     // Everything except static assets, the login page and endpoint, and what an installed app needs before anyone has
     // signed in: the service worker, the offline page and the icons. None of them holds private data.
-    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons/|apple-icon.png|sw.js|offline|login|api/login).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons/|apple-icon.png|sw.js|offline|login|api/login|signup|api/signup).*)",
   ],
 };
