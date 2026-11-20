@@ -71,32 +71,48 @@ const SKIP_TAGS = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE"]);
 // Stands in for a line break while a paragraph is being gathered. Each one ends the piece it is in.
 const BREAK = "\u0001";
 
+/** One run of text from the article's HTML, with what it came from. */
+type Piece = {
+  text: string;
+  /** The innermost block tag it sat in: P, H2, DIV, LI, FIGCAPTION... */
+  tag: string;
+  /** Share of the characters that were inside links. */
+  linkShare: number;
+};
+
 /**
- * The article's text with one blank line between paragraphs. Paragraph breaks come from the page's own tags (a
- * paragraph, a heading, a list item, a double line break), not from whitespace in the HTML, because most sites send
- * their HTML squashed together with nothing between the tags.
+ * The article's text as paragraphs. Paragraph breaks come from the page's own tags (a paragraph, a heading, a list
+ * item, a double line break), not from whitespace in the HTML, because most sites send their HTML squashed together
+ * with nothing between the tags. Each piece remembers its tag and how much of it was links, so page furniture can be
+ * told apart from the article by structure.
  */
-function paragraphsFromHtml(html: string): string[] {
+function piecesFromHtml(html: string): Piece[] {
   const root = new JSDOM(`<body>${html}</body>`).window.document.body;
-  const paragraphs: string[] = [];
+  const pieces: Piece[] = [];
   let buffer = "";
+  let linkChars = 0;
+  let blockTag = "DIV";
 
   const flush = () => {
     // Every line break starts a new piece. Lines that are too short to stand alone (an address, a line of a poem) are
     // joined back to their neighbours when the lesson paragraphs are made, so a single <br> between paragraphs works
     // without breaking those.
+    const share = buffer.length > 0 ? Math.min(1, linkChars / buffer.replace(new RegExp(BREAK, "g"), "").length || 0) : 0;
     for (const piece of buffer.split(new RegExp(`\\s*${BREAK}\\s*`))) {
       const text = piece.replaceAll(BREAK, " ").replace(/\s+/g, " ").trim();
-      if (text) paragraphs.push(text);
+      if (text) pieces.push({ text, tag: blockTag, linkShare: share });
     }
     buffer = "";
+    linkChars = 0;
   };
 
-  const walk = (node: Node) => {
+  const walk = (node: Node, inLink: boolean) => {
     for (const child of Array.from(node.childNodes)) {
       if (child.nodeType === 3) {
         // A blank line inside a text node is a paragraph break (pages that send plain text in a styled box).
-        buffer += (child.nodeValue ?? "").replace(/\n[ \t]*\n\s*/g, `${BREAK}${BREAK}`);
+        const value = (child.nodeValue ?? "").replace(/\n[ \t]*\n\s*/g, `${BREAK}${BREAK}`);
+        buffer += value;
+        if (inLink) linkChars += value.replace(/\s+/g, " ").trim().length;
       } else if (child.nodeType === 1) {
         const tag = (child as Element).tagName;
         if (SKIP_TAGS.has(tag)) continue;
@@ -104,18 +120,101 @@ function paragraphsFromHtml(html: string): string[] {
           buffer += BREAK;
         } else if (BLOCK_TAGS.has(tag)) {
           flush();
-          walk(child);
+          const outer = blockTag;
+          blockTag = tag;
+          walk(child, inLink || tag === "A");
           flush();
+          blockTag = outer;
         } else {
-          walk(child);
+          walk(child, inLink || tag === "A");
         }
       }
     }
   };
 
-  walk(root);
+  walk(root, false);
   flush();
-  return paragraphs;
+  return pieces;
+}
+
+/**
+ * After the article is picked out: a piece that is mostly links is a menu, a "related" list or a "discover more"
+ * link, not the story.
+ */
+export function keepArticlePieces(pieces: Piece[]): Piece[] {
+  return pieces.filter((p) => !(p.linkShare > 0.6 && p.text.split(/\s+/).length < 40));
+}
+
+// Parts of a page that are never the story: navigation, footers, forms, players, dates.
+const PRUNE_TAGS = new Set(["NAV", "ASIDE", "FOOTER", "FORM", "BUTTON", "INPUT", "SELECT", "TEXTAREA", "IFRAME", "VIDEO", "AUDIO", "SVG", "DIALOG", "TIME"]);
+const PRUNE_ROLES = new Set(["navigation", "banner", "complementary", "contentinfo", "search", "dialog", "toolbar", "menu"]);
+// Words in a class or id that say what a box is for ("share-bar", "related_posts").
+const PRUNE_WORDS = new Set([
+  "share", "sharing", "social", "related", "recommended", "trending", "newsletter", "promo", "promos", "advert", "advertisement",
+  "ad", "ads", "banner", "breadcrumb", "breadcrumbs", "comment", "comments", "subscribe", "subscription", "widget", "sidebar",
+  "byline", "author", "authors", "timestamp", "dateline", "date", "tags", "taxonomy", "toolbar", "cookie", "cookies", "consent",
+  "popup", "modal", "teaser", "outbrain", "taboola",
+]);
+
+/** Remove the furniture boxes from a page before the article is picked out of it. */
+export function pruneFurniture(doc: Document): void {
+  const bodyLength = (doc.body?.textContent ?? "").length || 1;
+  const doomed: Element[] = [];
+  for (const el of Array.from(doc.body?.querySelectorAll("*") ?? [])) {
+    const tag = el.tagName;
+    if (tag === "ARTICLE" || tag === "MAIN") continue;
+    let remove = PRUNE_TAGS.has(tag);
+    if (!remove) {
+      const role = el.getAttribute("role")?.toLowerCase();
+      remove = (role !== undefined && PRUNE_ROLES.has(role)) || el.getAttribute("aria-hidden") === "true" || el.hasAttribute("hidden");
+    }
+    if (!remove) {
+      const words = `${el.getAttribute("class") ?? ""} ${el.id}`.toLowerCase().split(/[^a-z0-9]+/);
+      // A huge wrapper with a word like "comments-open" in its class is the page, not a comment box.
+      remove = words.some((w) => PRUNE_WORDS.has(w)) && (el.textContent ?? "").length < bodyLength * 0.6;
+    }
+    if (remove) doomed.push(el);
+  }
+  for (const el of doomed) el.remove();
+  pruneLabelsAndLinkBlocks(doc);
+}
+
+const BLOCKS_INSIDE = "p, div, ul, ol, li, table, h1, h2, h3, h4, h5, h6, blockquote, section, article, figure";
+const LABEL_TAGS = new Set(["DIV", "SPAN", "TD", "TH", "DT", "DD", "A", "LABEL", "SMALL"]);
+const INLINE_PARENTS = new Set(["P", "H1", "H2", "H3", "H4", "H5", "H6", "LI", "A", "EM", "STRONG", "B", "I", "SPAN", "SMALL", "BLOCKQUOTE", "FIGCAPTION", "LABEL", "U", "MARK", "SUP", "SUB"]);
+const SENTENCE_END = /[.!?…»"”')\]]$/;
+
+const wordCount = (text: string) => text.split(/\s+/).filter(Boolean).length;
+
+/**
+ * On a page written in ordinary paragraphs, a small box that holds no paragraph of its own and does not read like a
+ * sentence ("Título del video", "Fecha de publicación 4 horas") is a label, not story. So is any block that is mostly
+ * links and short ("Descubre más", a list of related notes). Done before the article is picked out, because that step
+ * rewrites boxes into paragraphs and the difference is lost. A page with almost no paragraph tags is left alone.
+ */
+function pruneLabelsAndLinkBlocks(doc: Document): void {
+  const real = Array.from(doc.body?.querySelectorAll("p") ?? []).filter((p) => (p.textContent ?? "").trim().length >= 40);
+  if (real.length < 2) return;
+  const doomed = new Set<Element>();
+  for (const el of Array.from(doc.body.querySelectorAll("*"))) {
+    const text = (el.textContent ?? "").replace(/\s+/g, " ").trim();
+    if (!text) continue;
+    const words = wordCount(text);
+    // Mostly links and short: a menu, a related list, a "discover more" link.
+    const inlineHere = (el.tagName === "A" || el.tagName === "SPAN") && INLINE_PARENTS.has(el.parentElement?.tagName ?? "");
+    if (words < 30 && !inlineHere && /^(P|DIV|UL|OL|SECTION|TABLE|TD|A|SPAN)$/.test(el.tagName)) {
+      const linked = Array.from(el.querySelectorAll("a")).reduce((n, a) => n + (a.textContent ?? "").replace(/\s+/g, " ").trim().length, 0);
+      const own = el.tagName === "A" ? text.length : linked;
+      if (own / text.length >= 0.8 && !real.includes(el as HTMLParagraphElement)) doomed.add(el);
+    }
+    // A small box with no block inside it that is not a sentence.
+    if (LABEL_TAGS.has(el.tagName) && !el.querySelector(BLOCKS_INSIDE)) {
+      const parent = el.parentElement?.tagName ?? "";
+      if (INLINE_PARENTS.has(parent)) continue;
+      if (words < 6 || !SENTENCE_END.test(text)) doomed.add(el);
+    }
+  }
+  for (const el of doomed) el.remove();
 }
 
 const BOILERPLATE =
@@ -129,6 +228,8 @@ const FURNITURE: RegExp[] = [
   /^(?:[Pp]or|[Bb]y|[Rr]edacci[oó]n|[Tt]exto)\s*:?\s+\p{Lu}[\p{L}.'’-]*(?:\s+(?:de\s+|del\s+|la\s+)?\p{Lu}[\p{L}.'’-]*){0,3}$/u,
   /^(?:publicado|actualizado|updated|published|modificado|fecha)(?:\s+el)?\s*:?\s*[\d\p{L}.,:/ -]{4,40}$/iu,
   /^(?:escucha esta nota|escuchar|listen to this(?: article)?|advertisement|advertising|publicidad|anuncio)$/i,
+  /^(?:descubre|ver|leer|conoce|mira|lee|see|read|discover)\s+(?:m[aá]s|todo|more|all|la galer[ií]a|el v[ií]deo|la nota completa)\.?$/i,
+  /^(?:t[ií]tulo|descripci[oó]n|duraci[oó]n|cr[eé]ditos?)\s+del?\s+(?:v[ií]deo|audio|galer[ií]a|art[ií]culo|nota)\s*:?.{0,40}$/i,
 ];
 
 /** Remove repeats and the share/related-link lines news pages put between paragraphs. Short headings stay. */
@@ -166,10 +267,11 @@ export function decodeHtml(bytes: Uint8Array, contentType: string): string {
 /** The readable text of an HTML page, with navigation, scripts and styles removed and the paragraphs kept apart, plus its title. */
 export function extractArticle(html: string, url: string): { text: string; title: string } {
   const dom = new JSDOM(html, { url });
+  pruneFurniture(dom.window.document);
   const article = new Readability(dom.window.document, { charThreshold: 100 }).parse();
   const title = (article?.title ?? "").replace(/\s+/g, " ").trim();
 
-  let text = article?.content ? cleanParagraphs(paragraphsFromHtml(article.content)).join("\n\n") : "";
+  let text = article?.content ? cleanParagraphs(keepArticlePieces(piecesFromHtml(article.content)).map((p) => p.text)).join("\n\n") : "";
   if (text.length < MIN_TEXT_CHARS) {
     // The page had text but no usable tags. Fall back to its plain text rather than giving up.
     text = (article?.textContent ?? "")
