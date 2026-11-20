@@ -281,15 +281,19 @@ export async function deleteSession(id: string, userId: string): Promise<void> {
   if (!data || data.length === 0) throw new UserFacingError("That lesson is already gone.", 404);
 }
 
-export async function listSessions(userId: string, limit = 20): Promise<SessionRow[]> {
+/** The person's newest lessons, optionally only those in one language. */
+export async function listSessions(userId: string, limit = 20, language?: Language): Promise<SessionRow[]> {
+  // Filtered here rather than in the query so it still works before the language column exists (migration 0002).
+  // Read more than `limit` so a language with fewer recent lessons is not cut short.
   const { data, error } = await db()
     .from("sessions")
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(language ? limit * 5 : limit);
   if (error) throw new Error(`Could not list sessions: ${error.message}`);
-  return (data ?? []).map(toSessionRow);
+  const rows = (data ?? []).map(toSessionRow);
+  return (language ? rows.filter((r) => r.language === language) : rows).slice(0, limit);
 }
 
 export type SessionDetail = {

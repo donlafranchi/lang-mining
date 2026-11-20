@@ -12,10 +12,11 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const user = await requireUser();
+  const language = await preferredLanguage();
   let sessions: SessionRow[] = [];
   let setupError = "";
   try {
-    sessions = await listSessions(user.id);
+    sessions = await listSessions(user.id, 20, language);
   } catch (err) {
     setupError = err instanceof Error ? err.message : "Could not load recent sessions.";
   }
@@ -31,7 +32,7 @@ export default async function Home() {
     <main className="shell">
       <InstallHint />
 
-      <PasteForm helps={user.help} initialLanguage={await preferredLanguage()} />
+      <PasteForm helps={user.help} initialLanguage={language} />
 
       {deck && (
         <nav className="deck-links" aria-label="Study">
@@ -43,6 +44,12 @@ export default async function Home() {
 
       {setupError && <p className="error" style={{ marginTop: 16 }}>{setupError}</p>}
 
+      {sessions.length === 0 && !setupError && (
+        <p className="muted" style={{ marginTop: 16 }}>
+          No {language === "fa" ? "Farsi" : "Spanish"} lessons yet.
+        </p>
+      )}
+
       {sessions.length > 0 && (
         <section className="recent">
           <h2>Recent</h2>
@@ -52,7 +59,6 @@ export default async function Home() {
                 <span className="title" dir="auto">
                   {s.title}
                 </span>
-                {s.language === "fa" && <span className="pill">Farsi</span>}
                 {effectiveStatus(s) !== "ready" && (
                   <span className="pill">{effectiveStatus(s) === "processing" ? "building" : "failed"}</span>
                 )}

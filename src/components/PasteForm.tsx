@@ -35,6 +35,8 @@ export function PasteForm(props: { helps: Record<Language, HelpLevel>; initialLa
     setLanguage(value);
     // A cookie, so the server can open Deck, Quiz and the rest in the same language.
     document.cookie = `${LANGUAGE_COOKIE}=${value}; path=/; max-age=31536000; samesite=lax`;
+    // The recent list below the form shows only this language, so ask the server for it again.
+    router.refresh();
   }
 
   function pickModel(value: ModelId) {
