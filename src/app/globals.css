@@ -675,20 +675,6 @@ button.mark {
   color: var(--muted);
 }
 
-.loading-screen {
-  min-height: 70vh;
-  display: grid;
-  place-content: center;
-  justify-items: center;
-  gap: 8px;
-  text-align: center;
-}
-.loading-emoji {
-  font-size: 9rem;
-  line-height: 1;
-  margin: 12px 0;
-}
-
 /* One layout for every word: as written, from, meaning, kind of word. */
 .word-entry {
   display: grid;
@@ -803,6 +789,7 @@ progress {
 .avatar-wrap {
   position: relative;
   flex-shrink: 0;
+  margin-left: auto;
 }
 .avatar {
   width: 40px;
@@ -818,7 +805,7 @@ progress {
 .menu {
   position: absolute;
   top: calc(100% + 8px);
-  left: 0;
+  right: 0;
   min-width: 240px;
   background: var(--surface);
   border: 1px solid var(--line);
@@ -849,4 +836,48 @@ progress {
 .menu-item:hover,
 .menu-item:focus-visible {
   background: var(--chip);
+}
+
+/* The loading screen for opening the app: over everything until the app's code has started, and gone after 8 seconds regardless. */
+.app-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--bg);
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+  animation: splash-timeout 0s 8s forwards;
+}
+.app-splash-emoji {
+  font-size: 9rem;
+  line-height: 1;
+  margin: 12px 0;
+}
+@keyframes splash-timeout {
+  to {
+    visibility: hidden;
+    pointer-events: none;
+  }
+}
+
+.update-banner {
+  position: sticky;
+  top: var(--header-h);
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.95rem;
+}
+.update-banner .btn {
+  background: var(--accent-ink);
+  color: var(--accent);
+  flex-shrink: 0;
 }
