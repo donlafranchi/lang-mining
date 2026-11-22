@@ -344,24 +344,31 @@ describe("Farsi prompts", () => {
 });
 
 describe("enrichText (Farsi)", () => {
-  it("builds 2-paragraph batches at full help and keeps the source Persian exactly", async () => {
+  it("builds 5-sentence batches at full help and keeps the source Persian exactly", async () => {
     const complete = vi.fn(fakeFarsiModel());
     const result = (await enrichText({ text: persianText(6), language: "fa", help: "full", complete })) as FarsiEnrichment;
-    expect(complete).toHaveBeenCalledTimes(3);
+    expect(complete).toHaveBeenCalledTimes(2);
     expect(result.paragraphs).toHaveLength(6);
     expect(result.paragraphs.map((p) => p.persian)).toEqual(Array.from({ length: 6 }, (_, i) => persianPara(i + 1)));
     expect(result.paragraphs[0].words).toHaveLength(2);
     expect(result.paragraphs[0].english).toBe("English for Farsi paragraph 1.");
-    expect(result.summary).toBe("Gist of 1,2. Gist of 3,4. Gist of 5,6.");
+    expect(result.summary).toBe("Gist of 1,2,3,4,5. Gist of 6.");
   });
 
   it("uses bigger batches at lighter help", async () => {
     const medium = vi.fn(fakeFarsiModel());
     await enrichText({ text: persianText(6), language: "fa", help: "medium", complete: medium });
-    expect(medium).toHaveBeenCalledTimes(2);
+    expect(medium).toHaveBeenCalledTimes(1);
     const light = vi.fn(fakeFarsiModel());
     await enrichText({ text: persianText(6), language: "fa", help: "light", complete: light });
-    expect(light).toHaveBeenCalledTimes(2);
+    expect(light).toHaveBeenCalledTimes(1);
+  });
+
+  it("makes every sentence its own page, in order, keeping the text exactly", async () => {
+    const complete = vi.fn(fakeFarsiModel());
+    const text = "او به مدرسه رفت. آیا تو هم می‌آیی؟ من هم کتاب می‌خوانم و چای می‌نوشم.";
+    const result = (await enrichText({ text, language: "fa", help: "full", complete })) as FarsiEnrichment;
+    expect(result.paragraphs.map((p) => p.persian)).toEqual(["او به مدرسه رفت.", "آیا تو هم می‌آیی؟", "من هم کتاب می‌خوانم و چای می‌نوشم."]);
   });
 
   it("sends the level's prompt to the model", async () => {

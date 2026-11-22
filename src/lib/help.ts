@@ -37,10 +37,11 @@ const SPANISH_LIMITS: Record<HelpLevel, BatchLimits> = {
 };
 
 const FARSI_LIMITS: Record<HelpLevel, BatchLimits> = {
-  // Persian script is token heavy and every extra word is more output, so more help means smaller batches.
-  full: { maxParagraphs: 2, maxChars: 1200 },
-  medium: { maxParagraphs: 3, maxChars: 2000 },
-  light: { maxParagraphs: 5, maxChars: 3000 },
+  // Farsi lessons are one sentence per page, so a batch holds many short items. Persian script is token heavy and every
+  // extra word is more output, so more help still means smaller batches.
+  full: { maxParagraphs: 5, maxChars: 1200 },
+  medium: { maxParagraphs: 7, maxChars: 1800 },
+  light: { maxParagraphs: 10, maxChars: 2500 },
 };
 
 /** How many paragraphs go into one model call. */

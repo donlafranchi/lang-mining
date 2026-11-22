@@ -1,7 +1,7 @@
 import { batchLimits, defaultHelp, type HelpLevel } from "../help";
 import { DEFAULT_LANGUAGE, type Language } from "../languages";
 import { mergeFarsiBatches, parseFarsiBatch, type FarsiEnrichment } from "./farsi-schema";
-import { batchParagraphs, splitParagraphs, MAX_ARTICLE_CHARS, type NumberedParagraph } from "./paragraphs";
+import { batchParagraphs, splitParagraphs, splitSentences, MAX_ARTICLE_CHARS, type NumberedParagraph } from "./paragraphs";
 import { buildBatchUserPrompt, buildSystemPrompt } from "./prompt";
 import type { Analyzer, ParagraphAnalysis } from "../analysis/contract";
 import { detectSpanishPatterns } from "../pattern-rules/detect-es";
@@ -168,7 +168,9 @@ async function enrichInBatches<R, L>(args: {
   /** Finds grammar patterns from the analysis, so the model need not. */
   detectPatterns?: (analysis: ParagraphAnalysis, text: string) => PatternUse[];
 }): Promise<L> {
-  const paragraphs = splitParagraphs(args.text);
+  // Farsi is taught a sentence at a time, so each study "paragraph" is one sentence. Spanish keeps whole paragraphs.
+  const split = splitParagraphs(args.text);
+  const paragraphs = args.language === "fa" ? splitSentences(split) : split;
   if (paragraphs.length === 0) throw new EnrichmentError("Input text is empty.");
   // The title stands alone as paragraph 1, never merged into the text after it.
   const title = args.title?.replace(/\s+/g, " ").trim();
