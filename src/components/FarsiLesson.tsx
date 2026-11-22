@@ -168,7 +168,7 @@ function Reader({
         </summary>
         <div className="body">{e.summary}</div>
       </details>
-      <Pager pages={pages} label="Paragraph" />
+      <Pager pages={pages} label="Sentence" />
       <KnownPatterns patterns={patterns} seen={seenPatterns} />
       {e.grammar_notes.length > 0 && (
         <details className="item">

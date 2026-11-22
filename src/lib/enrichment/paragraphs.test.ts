@@ -6,6 +6,7 @@ import {
   MAX_PARAGRAPH_CHARS,
   MIN_PARAGRAPH_CHARS,
   splitParagraphs,
+  splitSentences,
 } from "./paragraphs";
 import { batchLimits } from "../help";
 
@@ -121,9 +122,9 @@ describe("batchParagraphs", () => {
 
   it("uses smaller batches when given tighter limits", () => {
     const paragraphs = Array.from({ length: 6 }, (_, i) => `Párrafo ${i + 1} ${para("x", 100)}`);
-    const batches = batchParagraphs(paragraphs, batchLimits("fa", "full"));
-    for (const b of batches) expect(b.length).toBeLessThanOrEqual(2);
-    expect(batches.length).toBe(3);
+    const batches = batchParagraphs(paragraphs, batchLimits("es", "full"));
+    for (const b of batches) expect(b.length).toBeLessThanOrEqual(3);
+    expect(batches.length).toBe(2);
     expect(batches.flat().map((b) => b.n)).toEqual([1, 2, 3, 4, 5, 6]);
   });
 
@@ -153,5 +154,21 @@ describe("batchParagraphs", () => {
   it("keeps a paragraph of about 100 words whole", () => {
     const hundred = Array.from({ length: 100 }, () => "casa").join(" ");
     expect(splitParagraphs(hundred).length).toBe(1);
+  });
+});
+
+describe("splitSentences", () => {
+  it("cuts at Persian and Latin sentence ends and keeps the text exactly", () => {
+    const text = "او به مدرسه رفت. آیا تو هم می‌آیی؟ بله! من می‌آیم.";
+    expect(splitSentences([text])).toEqual(["او به مدرسه رفت.", "آیا تو هم می‌آیی؟", "بله! من می‌آیم."]);
+    expect(splitSentences([text]).join(" ").replace(/\s+/g, " ")).toBe(text);
+  });
+
+  it("joins a fragment too short to be a sentence onto its neighbour", () => {
+    expect(splitSentences(["۱. او به مدرسه رفت و کتاب خرید."])).toEqual(["۱. او به مدرسه رفت و کتاب خرید."]);
+  });
+
+  it("does not cut inside a closing quote, joins a tiny tail, and keeps paragraphs apart", () => {
+    expect(splitSentences(["گفت: «من می‌روم.» بعد رفت.", "پایان داستان است."])).toEqual(["گفت: «من می‌روم.» بعد رفت.", "پایان داستان است."]);
   });
 });

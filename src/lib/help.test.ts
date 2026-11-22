@@ -38,10 +38,10 @@ describe("help levels", () => {
 });
 
 describe("batchLimits", () => {
-  it("makes Farsi batches smaller as help goes up", () => {
-    expect(batchLimits("fa", "full").maxParagraphs).toBe(2);
-    expect(batchLimits("fa", "medium").maxParagraphs).toBe(3);
-    expect(batchLimits("fa", "light").maxParagraphs).toBe(5);
+  it("makes Farsi batches (one sentence each) smaller as help goes up", () => {
+    expect(batchLimits("fa", "full").maxParagraphs).toBe(5);
+    expect(batchLimits("fa", "medium").maxParagraphs).toBe(7);
+    expect(batchLimits("fa", "light").maxParagraphs).toBe(10);
     expect(batchLimits("fa", "full").maxChars).toBeLessThan(batchLimits("fa", "light").maxChars);
   });
 
@@ -52,9 +52,9 @@ describe("batchLimits", () => {
     expect(batchLimits("es", "full").maxChars).toBeLessThan(batchLimits("es", "light").maxChars);
   });
 
-  it("keeps Farsi batches unchanged", () => {
-    expect(batchLimits("fa", "full")).toEqual({ maxParagraphs: 2, maxChars: 1200 });
-    expect(batchLimits("fa", "medium")).toEqual({ maxParagraphs: 3, maxChars: 2000 });
-    expect(batchLimits("fa", "light")).toEqual({ maxParagraphs: 5, maxChars: 3000 });
+  it("gives Farsi sentence batches a tight character cap at full help", () => {
+    expect(batchLimits("fa", "full")).toEqual({ maxParagraphs: 5, maxChars: 1200 });
+    expect(batchLimits("fa", "medium")).toEqual({ maxParagraphs: 7, maxChars: 1800 });
+    expect(batchLimits("fa", "light")).toEqual({ maxParagraphs: 10, maxChars: 2500 });
   });
 });

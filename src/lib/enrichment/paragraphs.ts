@@ -98,6 +98,37 @@ export function splitParagraphs(text: string): string[] {
   return result;
 }
 
+/** A fragment this short ("۱." or a stray mark) is never a sentence of its own. */
+const MIN_SENTENCE_CHARS = 12;
+
+/**
+ * Split each paragraph into sentences, in code, for the sentence-by-sentence lessons (Farsi). Cuts after . ! ? … ؟ (and
+ * a closing quote or bracket), keeps the text exactly, and joins fragments too short to be a sentence onto a neighbour.
+ */
+export function splitSentences(paragraphs: string[]): string[] {
+  const out: string[] = [];
+  for (const paragraph of paragraphs) {
+    const pieces = paragraph.split(/(?<=[.!?…؟][»"”')\]]?)\s+/).map((x) => x.trim()).filter(Boolean);
+    const merged: string[] = [];
+    let carry = "";
+    for (const piece of pieces) {
+      const joined = carry ? `${carry} ${piece}` : piece;
+      if (joined.length < MIN_SENTENCE_CHARS) {
+        carry = joined;
+        continue;
+      }
+      merged.push(joined);
+      carry = "";
+    }
+    if (carry) {
+      if (merged.length > 0) merged[merged.length - 1] = `${merged[merged.length - 1]} ${carry}`;
+      else merged.push(carry);
+    }
+    out.push(...merged);
+  }
+  return out;
+}
+
 /** Group paragraphs into calls: a few paragraphs, a few thousand characters. Numbers are 1-based and global. */
 export function batchParagraphs(paragraphs: string[], limits: BatchLimits = DEFAULT_BATCH_LIMITS): NumberedParagraph[][] {
   const batches: NumberedParagraph[][] = [];
