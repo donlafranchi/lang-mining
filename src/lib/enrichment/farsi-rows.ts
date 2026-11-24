@@ -80,3 +80,22 @@ export function farsiGlosses(rows: FarsiRow[]): Map<string, Gloss> {
   }
   return out;
 }
+
+/** The first short meaning of a gloss: "to go, to leave" becomes "go". Long glosses are cut so a column stays narrow. */
+export function shortGloss(meaning: string, max = 16): string {
+  const first = meaning.split(/[;,/]/)[0].replace(/\([^)]*\)/g, "").replace(/^(to|the|a|an) /i, "").trim();
+  return first.length > max ? `${first.slice(0, max - 1).trimEnd()}…` : first;
+}
+
+export type InterlinearWord = { word: string; gloss: string | null };
+
+/** A sentence cut into its words, each with its short English meaning when the lesson has one, in reading order. */
+export function interlinear(text: string, glosses: Map<string, Gloss>): InterlinearWord[] {
+  return text
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => {
+      const g = glosses.get(glossKey(word));
+      return { word, gloss: g ? shortGloss(g.meaning) || null : null };
+    });
+}

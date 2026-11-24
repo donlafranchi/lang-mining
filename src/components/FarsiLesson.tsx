@@ -14,6 +14,7 @@ import type {
 } from "@/lib/enrichment/farsi-schema";
 import {
   farsiGlosses,
+  interlinear,
   farsiParagraphRows,
   type FarsiRow,
 } from "@/lib/enrichment/farsi-rows";
@@ -120,6 +121,21 @@ function Reader({
             </Fa>
           </div>
           <div className="translit">{p.transliteration}</div>
+          <div
+            className="interlinear"
+            dir="rtl"
+            lang="fa"
+            aria-label="Word by word"
+          >
+            {interlinear(p.persian, farsiGlosses(rows)).map((w, k) => (
+              <span key={k} className="il-word">
+                <span className="il-fa">{w.word}</span>
+                <span className="il-en" dir="ltr">
+                  {w.gloss ?? "·"}
+                </span>
+              </span>
+            ))}
+          </div>
           <div className="muted small-hint">Tap any word for its meaning.</div>
         </div>
 

@@ -1001,3 +1001,25 @@ input.testme-input:focus {
   display: grid;
   gap: 8px;
 }
+
+/* Word by word: each word of the sentence with its short English underneath, reading right to left for Farsi. */
+.interlinear {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+.il-word {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+}
+.il-fa {
+  font-size: 1.15rem;
+  line-height: 1.5;
+}
+.il-en {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
