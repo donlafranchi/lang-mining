@@ -75,3 +75,34 @@ export async function randomArticle(language: Language, fetcher: FetchLike = fet
   }
   throw new Error("Could not find an article just now. Try again.");
 }
+
+/**
+ * A first sentence for each of these article titles, in the order given. A title Wikipedia does not have is left out,
+ * and a redirect is followed, so a list written by hand cannot show a dead entry.
+ */
+export async function previewsFor(language: Language, titles: string[], fetcher: FetchLike = fetch): Promise<WikiItem[]> {
+  const found = new Map<string, string>();
+  const redirects = new Map<string, string>();
+  for (let i = 0; i < titles.length; i += 20) {
+    const batch = titles.slice(i, i + 20);
+    const data = await api(language, { action: "query", prop: "extracts", exintro: "1", explaintext: "1", exsentences: "1", exlimit: "max", redirects: "1", titles: batch.join("|") }, fetcher);
+    const q = data.query as { normalized?: { from: string; to: string }[]; redirects?: { from: string; to: string }[]; pages?: { title: string; extract?: string; missing?: boolean }[] } | undefined;
+    for (const n of q?.normalized ?? []) redirects.set(n.from, n.to);
+    for (const r of q?.redirects ?? []) redirects.set(r.from, r.to);
+    for (const p of q?.pages ?? []) if (!p.missing) found.set(p.title, (p.extract ?? "").replace(/\s+/g, " ").trim());
+  }
+  const final = (title: string) => {
+    let t = title;
+    for (let hops = 0; hops < 3 && redirects.has(t); hops++) t = redirects.get(t)!;
+    return t;
+  };
+  const seen = new Set<string>();
+  const out: WikiItem[] = [];
+  for (const title of titles) {
+    const t = final(title);
+    if (!found.has(t) || seen.has(t)) continue;
+    seen.add(t);
+    out.push({ title: t, preview: found.get(t)!.slice(0, 220) });
+  }
+  return out;
+}
