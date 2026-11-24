@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { articleIntro, introFromExtract, previewsFor, randomArticle, searchArticles } from "./wikipedia";
+import { articleIntro, introFromExtract, maxIntroChars, previewsFor, randomArticle, searchArticles } from "./wikipedia";
 
 const LONG = "La casa es un edificio que sirve de vivienda para las personas y las familias que viven en ella desde hace muchos años. ".repeat(4).trim();
 
@@ -82,5 +82,16 @@ describe("previewsFor", () => {
     };
     await previewsFor("es", Array.from({ length: 45 }, (_, i) => `T${i}`), fetcher);
     expect(calls).toBe(3);
+  });
+});
+
+describe("opening length", () => {
+  it("takes a shorter opening for Farsi, whose lessons take longer to build", async () => {
+    expect(maxIntroChars("fa")).toBeLessThan(maxIntroChars("es"));
+    const para = "این یک جمله بسیار طولانی درباره شهر تهران است که پایتخت ایران به شمار می‌رود و مردم زیادی در آن زندگی می‌کنند. ";
+    const body = { query: { pages: [{ title: "تهران", extract: Array.from({ length: 30 }, () => para.trim()).join("\n\n") }] } };
+    const a = await articleIntro("fa", "تهران", reply(body));
+    expect(a.text.length).toBeLessThanOrEqual(maxIntroChars("fa"));
+    expect(a.text.length).toBeGreaterThan(400);
   });
 });

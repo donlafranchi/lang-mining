@@ -39,6 +39,9 @@ export default async function StudyPage() {
         <Link className="btn secondary" href="/quiz">
           Quiz{deck ? ` (${deck.due} due)` : ""}
         </Link>
+        <Link className="btn secondary" href="/study/write">
+          Writing
+        </Link>
         <Link className="btn secondary" href="/deck">
           Deck{deck ? ` (${deck.total})` : ""}
         </Link>

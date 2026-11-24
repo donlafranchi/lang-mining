@@ -1,0 +1,4 @@
+# 056 Writing as its own study type; Farsi Discover timeout
+- Writing is now Study > Writing (/study/write), apart from the Quiz. Each saved word is shown with target, sound, English, kind of word and example together, and the learner copies it on the pad. Random 20 words from the deck each time; Skip / Next word; nothing is graded or stored.
+- The Quiz goes back to translate-only (the writing step and its toggle are removed; 053's pad is reused).
+- Fix: mining a Farsi Wikipedia article timed out (runtime log: /api/discover/mine "Task timed out after 300 seconds"). Farsi is built a sentence at a time with every word explained, so about 3,500 characters of opening was too much. Farsi now takes about 1,500 characters; Spanish stays at 3,500. The size is an estimate, not yet measured against a real build.

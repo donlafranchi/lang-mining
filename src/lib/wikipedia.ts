@@ -4,6 +4,13 @@ import type { Language } from "./languages";
 // Only the first part of an article is mined, so one tap never turns into a very long, costly lesson.
 
 export const MAX_INTRO_CHARS = 3500;
+// Farsi lessons are built a sentence at a time with every word explained, which is far slower per character, so
+// they take a shorter opening to finish inside the 300 second limit.
+export const MAX_INTRO_CHARS_FA = 1500;
+
+export function maxIntroChars(language: Language): number {
+  return language === "fa" ? MAX_INTRO_CHARS_FA : MAX_INTRO_CHARS;
+}
 const MIN_INTRO_CHARS = 400;
 const UA = "HandToBrain/1.0 (language learning app; reading suggestions)";
 
@@ -46,7 +53,7 @@ export async function articleIntro(language: Language, title: string, fetcher: F
   const pages = ((data.query as { pages?: { title?: string; extract?: string; missing?: boolean }[] } | undefined)?.pages ?? []).filter((p) => !p.missing);
   const page = pages[0];
   if (!page?.extract) throw new Error("That article could not be found.");
-  const text = introFromExtract(page.extract);
+  const text = introFromExtract(page.extract, maxIntroChars(language));
   const finalTitle = page.title ?? title;
   return { title: finalTitle, text, url: `${host(language)}/wiki/${encodeURIComponent(finalTitle.replace(/ /g, "_"))}` };
 }
