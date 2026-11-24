@@ -39,6 +39,9 @@ export default async function Home() {
           <Link className="btn secondary" href="/study">
             Study{deck ? ` (${deck.due} due)` : ""}
           </Link>
+          <Link className="btn secondary" href="/discover">
+            Discover
+          </Link>
         </nav>
       )}
 
