@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { THEMES } from "@/lib/discover-themes";
 import type { Language } from "@/lib/languages";
 import type { WikiItem } from "@/lib/wikipedia";
 
@@ -10,16 +11,18 @@ export function DiscoverWikipedia({ language }: { language: Language }) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [items, setItems] = useState<WikiItem[] | null>(null);
+  const [theme, setTheme] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const dir = language === "fa" ? "rtl" : "ltr";
 
-  async function find(query: string) {
+  async function find(query: string, themeId?: string) {
     setBusy("find");
+    setTheme(themeId ?? null);
     setError("");
     try {
       const res = await fetch(
-        `/api/discover/wikipedia?${new URLSearchParams({ language, q: query })}`,
+        `/api/discover/wikipedia?${new URLSearchParams(themeId ? { language, theme: themeId } : { language, q: query })}`,
       );
       const data = (await res.json().catch(() => ({}))) as {
         items?: WikiItem[];
@@ -63,9 +66,24 @@ export function DiscoverWikipedia({ language }: { language: Language }) {
 
   return (
     <div className="stack">
+      <div className="field-label">Themes</div>
+      <div className="stack">
+        {THEMES[language].map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            className={theme === t.id ? "btn" : "btn secondary"}
+            onClick={() => void find("", t.id)}
+            disabled={busy !== null}
+          >
+            {t.label}
+            <span className="rate-hint">{t.blurb}</span>
+          </button>
+        ))}
+      </div>
       <button
         type="button"
-        className="btn"
+        className="btn secondary"
         onClick={() => void find("")}
         disabled={busy !== null}
       >

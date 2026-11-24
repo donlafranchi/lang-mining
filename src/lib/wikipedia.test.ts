@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { articleIntro, introFromExtract, randomArticle, searchArticles } from "./wikipedia";
+import { articleIntro, introFromExtract, previewsFor, randomArticle, searchArticles } from "./wikipedia";
 
 const LONG = "La casa es un edificio que sirve de vivienda para las personas y las familias que viven en ella desde hace muchos años. ".repeat(4).trim();
 
@@ -52,5 +52,35 @@ describe("randomArticle", () => {
     const item = await randomArticle("es", fetcher);
     expect(item.title).toBe("Gran artículo");
     expect(item.preview.length).toBeLessThanOrEqual(220);
+  });
+});
+
+describe("previewsFor", () => {
+  it("keeps the given order, follows redirects, and drops missing and duplicate titles", async () => {
+    const body = {
+      query: {
+        normalized: [{ from: "yazd", to: "Yazd" }],
+        redirects: [{ from: "Persia", to: "Irán" }],
+        pages: [
+          { title: "Irán", extract: "Irán es un país." },
+          { title: "Yazd", extract: "Yazd es una ciudad." },
+          { title: "Nada", missing: true },
+        ],
+      },
+    };
+    const out = await previewsFor("es", ["yazd", "Nada", "Persia", "Irán"], reply(body));
+    expect(out).toEqual([
+      { title: "Yazd", preview: "Yazd es una ciudad." },
+      { title: "Irán", preview: "Irán es un país." },
+    ]);
+  });
+  it("asks in batches of 20 titles", async () => {
+    let calls = 0;
+    const fetcher = async () => {
+      calls++;
+      return { ok: true, json: async () => ({ query: { pages: [] } }) };
+    };
+    await previewsFor("es", Array.from({ length: 45 }, (_, i) => `T${i}`), fetcher);
+    expect(calls).toBe(3);
   });
 });
