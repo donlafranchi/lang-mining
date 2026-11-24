@@ -6,7 +6,6 @@ import type { DeckItem } from "@/lib/deck";
 import type { Language } from "@/lib/languages";
 import type { Rating } from "@/lib/srs";
 import { answerVariants, checkAnswer } from "@/lib/test-me";
-import { HandwritingPad } from "./HandwritingPad";
 
 type Cards = Pick<DeckItem, "id" | "payload">[];
 
@@ -20,10 +19,6 @@ export function Quiz(props: { cards: Cards; language: Language }) {
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [typed, setTyped] = useState("");
-  // Each card starts by writing the word with a finger (copying it from above), then comes the translation.
-  const [writeFirst, setWriteFirst] = useState(true);
-  const [writing, setWriting] = useState(true);
-  const [written, setWritten] = useState(false);
   // How the typed answer went: right (or close), wrong, or null when they tapped Show answer instead.
   const [result, setResult] = useState<"exact" | "close" | "wrong" | null>(
     null,
@@ -66,8 +61,6 @@ export function Quiz(props: { cards: Cards; language: Language }) {
       setFlipped(false);
       setTyped("");
       setResult(null);
-      setWriting(writeFirst);
-      setWritten(false);
       setIndex((i) => i + 1);
     } catch {
       setError(
@@ -98,21 +91,9 @@ export function Quiz(props: { cards: Cards; language: Language }) {
 
   return (
     <div className="stack">
-      <div className="quiz-top">
-        <p className="muted" aria-live="polite">
-          {index + 1} / {total}
-        </p>
-        <button
-          type="button"
-          className="linklike"
-          onClick={() => {
-            setWriteFirst(!writeFirst);
-            if (!flipped) setWriting(!writeFirst);
-          }}
-        >
-          Writing first: {writeFirst ? "on" : "off"}
-        </button>
-      </div>
+      <p className="muted" aria-live="polite">
+        {index + 1} / {total}
+      </p>
 
       <div className="card quiz-card stack">
         <div className="quiz-word" dir={dir} lang={props.language}>
@@ -152,32 +133,7 @@ export function Quiz(props: { cards: Cards; language: Language }) {
 
       {error && <p className="error">{error}</p>}
 
-      {!flipped && writing ? (
-        <div className="stack">
-          <p className="muted">
-            Write the word above with your finger, copying it. Then translate
-            it.
-          </p>
-          <HandwritingPad key={card.id} onChange={setWritten} />
-          <div className="deck-links">
-            <button
-              type="button"
-              className="btn"
-              onClick={() => setWriting(false)}
-              disabled={!written}
-            >
-              Done, now translate
-            </button>
-            <button
-              type="button"
-              className="btn secondary"
-              onClick={() => setWriting(false)}
-            >
-              Skip writing
-            </button>
-          </div>
-        </div>
-      ) : !flipped ? (
+      {!flipped ? (
         <form
           className="stack"
           onSubmit={(e) => {
